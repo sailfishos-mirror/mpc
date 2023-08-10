@@ -29,16 +29,6 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #endif
 #include "mpc.h"
 
-/* Microsoft Compiler does not have complex/_Complex, see
-   https://learn.microsoft.com/en-US/cpp/c-runtime-library/complex-math-support?view=msvc-170 */
-#ifdef _MSC_VER
-#define DOUBLE_COMPLEX _Dcomplex
-#define LONG_DOUBLE_COMPLEX _Lcomplex
-#else
-#define DOUBLE_COMPLEX double _Complex
-#define LONG_DOUBLE_COMPLEX long double _Complex
-#endif
-
 /*
  * Miscellaneous useful macros
  */

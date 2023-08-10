@@ -287,8 +287,8 @@ check_set (void)
 
 #if defined HAVE_COMPLEX_H
       {
-        double _Complex c = 1.0 - 2.0*I, d;
-        long double _Complex lc = c, ld;
+        DOUBLE_COMPLEX c = 1.0 - 2.0*I, d;
+        LONG_DOUBLE_COMPLEX lc = c, ld;
 
          mpc_set_dc (z, c, MPC_RNDNN);
          if ((d = mpc_get_dc (z, MPC_RNDNN)) != c)
