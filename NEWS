@@ -1,3 +1,6 @@
+Changes in version xxx:
+  - support for non-standard complex types under Windows (_Dcomplex, _Lcomplex)
+
 Changes in version 1.3.1, released in December 2022:
   - Bug fix: It is again possible to include mpc.h without including
     stdio.h.
