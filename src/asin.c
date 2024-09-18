@@ -18,6 +18,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
+/* References:
+   [1] MPC: Algorithms and Error Analysis, Andreas Enge, Philippe Théveny,
+       Paul Zimmermann, see mpc/doc/algorithms.pdf.
+*/
+
 #include <stdio.h>
 #include <limits.h> /* for ULONG_MAX */
 #include "mpc-impl.h"
@@ -213,7 +218,7 @@ mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
      In the first case, we have i*z + sqrt(1-z^2) ~ 2*i*z.
      In the second case, we have a cancellation between i*z and sqrt(1-z^2).
      More precisely, for t complex with |t| < 2^-2, we have
-     sqrt(1-t) = 1 - 1/(2t) + eps with |eps| < 1/(6|t|^2).
+     sqrt(1-t) = 1 - t/2 + eps with |eps| < |t|^2/6.
      We have sqrt(1-z^2) = sqrt(-z^2 * (1 - 1/z^2))
                          = -i*z * sqrt(1 - 1/z^2)
                          = -i*z * [1 - 1/(2z^2) * (1 + eps)] with |eps| < 1/(6|z|^2)
@@ -230,12 +235,13 @@ mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
   // |z| >= 2^(ex-1) thus 6*|z|^2 > 2^(2*ex)
   mpfr_prec_t p = mpfr_get_prec (mpc_realref (t)); // same precision as imaginary part
   /* the relative error is < 1/(6|z|^2) < 2^(-2*ex),
-     and we want it to be less than 1 ulp(t), thus we want 2 * ex >= p */
+     thus by Prop. "relerror" in [1], it is less than 2^(-2*ex+p) ulps;
+     since we want it to be less than 1 ulp(t), thus we want 2 * ex >= p */
   if (p < 4 || 2 * ex < p)
     return 0;
   mpfr_prec_t extra = 2 * ex - p;
-  /* now 2*ex >= p thus the relative error of approximating i*z + sqrt(1-z^2)
-     by i/(2z) is bounded by 2^(-p-extra). */
+    /* now 2*ex >= p, and the relative error of approximating i*z + sqrt(1-z^2)
+       by i/(2z) is bounded by 2^(-p-extra). */
   mpc_ui_div (t, 1ul, z, MPC_RNDNN); // 1/z
   mpc_div_2ui (t, t, 1, MPC_RNDNN);   // divide by 2
   // multiply by i
@@ -246,13 +252,15 @@ mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
      2^(-p-extra) * |t|. */
   ex = mpfr_get_exp (mpc_realref (t));
   ey = mpfr_get_exp (mpc_imagref (t));
-  mpfr_exp_t k = (ex >= ey) ? ex - ey : ey - ex; // k = |ex-ey|
+  mpfr_exp_t max_e = (ex >= ey) ? ex : ey;
+  mpfr_exp_t min_e = ex + ey - max_e;
+  mpfr_exp_t k = max_e - min_e; // k = |ex-ey|
   mpc_log (t, t, MPC_RNDNN);
   /* We have log(x+i*y) = 1/2 log(x^2+y^2) + i*atan2(y,x).
      We analyze separately the induced error on each part:
      - for the real part, the rounding error < 1 ulp() on x and y
-       corresponds to a relative error < 2^(1-p), which gives a
-       relative error < (1+2^(1-p))^2-1 < 5*2^-p on x^2 and y^2,
+       corresponds to a relative error < 2^(1-p) [Prop. "relerror"],
+       which gives a relative error < (1+2^(1-p))^2-1 < 5*2^-p on x^2 and y^2,
        and similarly on x^2+y^2.
        The approximation error bounded by 2^(-p-extra) * |x+i*y|
        <= 2^-p * |x+i*y| converts
@@ -266,25 +274,39 @@ mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
        since p >= 4 we have 3-p <= -1 thus |log(1+eps)| < 1.4 * 2^(3-p).
        The induced error on the real part is thus < 12*2^-p.
      - for the imaginary part, since Im(z) > 0, z is either in the 1st
-       or 2nd quadrant, and we can check that i/(2*z) lies in 1st or 4th
+       or 2nd quadrant, and we can check that i/(2*z) lies in the 1st or 4th
        quadrant, thus atan2(y,x) lies in (-pi/2, pi/2), and in both
        cases, atan2(y,x) = atan(y/x).
        The rounding error < 1 ulp() on x and y corresponds to a relative error
-       < 2^(1-p), which gives a relative error < (1+2^(1-p))^2-1 < 5*2^-p on
-       y/x.
+       < 2^(1-p) by Prop. "relerror" in [1], which gives a relative
+       error < (1+2^(1-p))^2-1 < 5*2^-p on y/x.
        The approximation error bounded by 2^(-p-extra) * |x+i*y| converts
        to a relative error < 2^(e-ex) * 2^(-p-extra) on x,
        and < 2^(e-ey) * 2^(-p-extra) on y, where ex = EXP(x), ey = EXP(y),
        and e = MAX(ex,ey).
        This gives a relative error on y/x which is bounded by
        (1+2^-p)*(1+2^|ex-ey|*2^(-p-extra))-1 < 2.1 * 2^(k-p)
-       with k = max(0,|ex-ey|-extra).
-       Thus we get a total relative error bounded by:
-       (1+5*2^-p)*(1 + 2.1*2^(k-p))-1 < 2^(k+3-p).
-       Since the derivative of atan(t) is less than 1, this corresponds
-       to an induced relative error < 2^(k+3-p) on the imaginary part.
-  */
+       with k = max(0,|ex-ey|-extra). */
   k = (k >= extra) ? k - extra : 0;
+  /*   On the other hand, we know that the error when approximating
+       i*z + sqrt(1-z^2) by i/(2z) is very close to i/(8z^3),
+       which is the next term of the Taylor expansion.
+       Let t = i/(2z) = x+i*y with |x| < 2^ex and |y| < 2^ey.
+       Then i/(8z^3) = -t^3 = x*(3*y^2-x^2) + i*y*(y^2-3*x^2).
+       Thus the induced relative error on the real and imaginary parts is bounded
+       by max(|3*y^2-x^2|,|y^2-3*x^2|) <= 3*max(x^2,y^2) < 2^(max(ex,ey)+2).
+       If max(ex,ey)+1 <= k-p, then this bound is better than the bound
+       2.1 * 2^(k-p). */
+  if (max_e + 1 <= k - p)
+    k = max_e + 1 + p;
+  if (k < 0)
+    k = 0;
+  /* In all cases, the induced relative error on the imaginary part is bounded
+     by 2.1 * 2^(k-p).
+     Thus we get a total relative error bounded by:
+     (1+5*2^-p)*(1 + 2.1*2^(k-p))-1 < 2^(k+3-p) for p >= 4 and k >= 0.
+     Since the derivative of atan(t) is less than 1, this corresponds
+     to an induced relative error < 2^(k+3-p) on the imaginary part. */
   ex = mpfr_get_exp (mpc_realref (t));
   /* Since the induced error on the real part is < 12*2^-p,
      it is less than 12/2^ex ulp(Re(t)). Thus the error on the real
@@ -516,8 +538,7 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   mpfr_set_emin (mpfr_get_emin_min ());
   mpfr_set_emax (mpfr_get_emax_max ());
 
-  /* regular complex: asin(z) = -i*log(i*z+sqrt(1-z^2))
-     (formula 4.4.26 in Abramowitz & Stegun) */
+  /* regular complex: asin(z) = -i*log(i*z+sqrt(1-z^2)) (formula 4.4.26 in Abramowitz & Stegun) */
   rnd_re = MPC_RND_RE(rnd);
   rnd_im = MPC_RND_IM(rnd);
 
@@ -530,14 +551,11 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     p += -2 * ey0;
 
   mpc_init2 (z1, p);
-  olderr = err = 0; /* number of lost bits */
   while (1)
   {
     mpfr_exp_t ex, ey;
 
     MPC_LOOP_NEXT(loop, op, rop);
-    p += err - olderr; /* add extra number of lost bits in previous loop */
-    olderr = err;
     p += (loop <= 2) ? mpc_ceil_log2 (p) + 3 : p / 2; // ensures p>=4 in mpc_asin_large_pos()
     mpc_set_prec (z1, p);
 
