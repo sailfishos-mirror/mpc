@@ -1490,6 +1490,101 @@ parts are multiplied by $2^{-\delta}$ too, the same holds for the recurrence
 on $\varepsilon_k$ and their solutions. Thus the final error bound on
 $\Im s$ is multiplied by $2^{-\delta}$ too.
 
+\paragraph{Case $|z|$ large with $\Im(z) > 0$.}
+In that case, when using the formula
+\[ {\rm asin}(z) = -i \log (iz + \sqrt{1-z^2}), \]
+there is a cancellation between $iz$ and $\sqrt{1-z^2}$.
+Indeed, for large $|z|$ we have $\sqrt{1-z^2} \approx -iz$ when
+$\Re(iz) < 0$, i.e., $\Im(z) > 0$.
+We first prove the following lemma.
+\begin{lemma}
+  Assume $t$ complex with $|t| \leq 1/4$, then
+  \[ \sqrt{1-t} = 1 - t/2 + \varepsilon, \]
+  with $|\varepsilon| < |t^2|/6$.
+\end{lemma}
+\begin{proof}
+  Andreas has a proof of this lemma.
+\end{proof}
+
+Applying this lemma to $t = 1/z^2$, as long as $|z| \ge 2$, we get:
+\[ iz + \sqrt{1-z^2} = \frac{i}{2z} (1 + \varepsilon) \quad
+  \mbox{with $|\varepsilon| < 1/|6z^2|$.} \]
+Thus if we approximate $iz + \sqrt{1-z^2}$ by $i/(2z)$,
+the relative error is bounded by $1/|6z^2|$.
+
+Let $e_z = {\rm max}(\Exp(\Re(z)),\Exp(\Im(z)))$.
+Then $|z| \ge 2^{e_z-1}$ thus $6 |z|^2 > 2^{2e_z}$.
+The relative error is bounded by $1/|6z^2| < 2^{-2e_z}$,
+thus by Prop.~\ref{prop:relerror} it is less than $2^{-2e_z+p}$ ulps,
+where $p$ is the working precision, and we assume $p \ge 4$.
+We further assume $2e_z \ge p$, so that this relative error is bounded
+by 1 ulp.
+
+We then approximate $t \approx i/(2z)$ using \verb|mpc_ui_div| followed by
+a division by 2 and a multiplication by $i$, both being exact.
+If we note $t = x + iy$, then the rounding error on $x$ and $y$ due
+to \verb|mpc_ui_div| is at most one ulp.
+Let $e_t = {\rm max}(\Exp(x), \Exp(y))$.
+Since $|t| = 1/|2z|$, where $|2z| \ge 2^{e_z}$, we have
+$|t| \le 2^{-e_z}$, which implies that both the real and imaginary parts
+of $t$ have absolute value less than $2^{-e_z}$, thus
+$e_t \le -e_z$.
+
+We then compute $u = {\tt mpc\_log}(t)$.
+We have
+\[ \log t = \frac{1}{2} \log(x^2+y^2) + i \, {\rm atan2}(y,x). \]
+We analyze separately the induced error on the real and imaginary parts
+of $u \approx \log t$.
+
+For the real part, the rounding error of less than 1 ulp on $x$ when
+approximating $t \approx i/(2z)$ corresponds to a relative error of
+less than $2^{1-p}$ (Prop.~\ref{prop:relerror}).
+The same holds for $y$, thus for $x^2$ and $y^2$ we get a relative error
+less than $(1 + 2^{1-p})^2-1 \le 4.25 \cdot 2^{-p}$.
+The same bound holds for $x^2+y^2$.
+We know that the error when approximating
+$iz + \sqrt{1-z^2}$ by $i/(2z)$ is very close to $i/(8z^3)$,
+which is the next term of the Taylor expansion.
+From $i/(2z) \approx t = x+iy$, we get $i/(8z^3) \approx -t^3 =
+x (3y^2-x^2) + i y (y^2-3x^2)$.
+The relative error on the real part is thus bounded by
+$|3y^2-x^2| \le 3 \cdot {\rm max}(x^2,y^2) \le 3 \cdot 2^{2e_t} \le 3 \cdot 2^{-2e_z}
+\le 3 \cdot 2^{-p}$ since we assumed $2e_z \ge p$,
+and the same holds for the imaginary part.
+This gives a relative error less than $(1 + 3 \cdot 2^{-p})^2 - 1 < 6.6 \cdot 2^{-p}$
+on $x^2$ and $y^2$, and similarly for $x^2+y^2$.
+The total relative error on $x^2+y^2$ is thus bounded by
+$(1 + 4.25 \cdot 2^{-p}) (1 + 6.6 \cdot 2^{-p}) - 1 < 12.7 \cdot 2^{-p}$.
+Now we deduce the relative error on $\log(x^2+y^2)$.
+Let $U = x^2+y^2$ and $V$ the corresponding exact value;
+we have shown that $U = V (1 + \varepsilon)$ with
+$|\varepsilon| < 12.7 \cdot 2^{-p}$.
+It follows $\log U = \log V + \log(1 + \varepsilon)$
+with $|\log(1 + \varepsilon)| < 26 \cdot 2^{-p}$.
+Since $|x|, |y| < 2^{e_t}$, we have $x^2+y^2 < 2^{2e_t+1} \le 2^{-2e_z+1}
+\le 2^{-p+1}$ since $2e_z \ge p$.
+Thus $|\log(x^2+y^2)| \ge (p-1) \log 2$,
+and the relative error on $\log(x^2+y^2)$ is bounded by
+$26 \cdot 2^{-p}/((p-1) \log 2) < 13 \cdot 2^{-p}$.
+The same holds for $1/2 \log(x^2+y^2)$, thus the relative error on $\Re(u)$
+is bounded by $13 \cdot 2^{-p}$, thus by $13$ ulps.
+
+For the imaginary part, since $\Im(z) > 0$, $z$ is either in the 1st or 2nd
+quadrant, and we can check that $i/(2z)$ lies in the 1st or 4th
+quadrant, thus ${\rm atan2}(y,x)$ lies in $(-\pi/2,\pi/2)$, and in both
+cases ${\rm atan2}(y,x) = {\rm atan}(y/x)$.
+The rounding error of less than 1 ulp on $x$ and $y$ corresponds to a
+relative error less than $2^{1-p}$ by Prop.~\ref{prop:relerror}, which
+gives a relative error less than $(1 + 2^{1-p})^2-1 \le 4.25 \cdot 2^{-p}$
+on $y/x$.
+Similarly to the real part, the error from the approximation by $i/(2z)$
+induces a relative error less than $3 \cdot 2^{-p}$ on $x$ and $y$,
+thus a relative error less than $(1 + 3 \cdot 2^{-p})^2-1 < 6.6 \cdot 2^{-p}$
+on $y/x$. The total relative error on $y/x$ is thus less than
+$(1 + 4.25 \cdot 2^{-p}) (1 + 6.6 \cdot 2^{-p}) - 1 < 12.7 \cdot 2^{-p}$.
+Since the derivative of $\rm atan$ is less than $1$, this corresponds
+to a relative error less than $13 \cdot 2^{-p}$ on $\Im(u)$,
+thus less than $13$ ulps like for the real part.
 
 \subsection {\texttt {mpc\_pow}}
 
@@ -3119,9 +3214,6 @@ So the computations may be stopped earlier if the numbers occurring in
 the AGM iterations do not change any more, since then additional
 iterations will fix the result.
 
-
-
-
 \section {Complex ball arithmetic}
 
 We propose a simple implementation of complex balls, which keep track of
@@ -3310,8 +3402,6 @@ r_{a, b} \leq
             - 1 \right)}
 \]
 is enough, where $\Exp (0)$ is considered as $- \infty$.
-
-
 
 \subsection {Modular functions}
 
