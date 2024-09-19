@@ -1651,7 +1651,8 @@ Thus $|\log(x^2+y^2)| \ge (p-1) \log 2$,
 and the relative error on $\log(x^2+y^2)$ is bounded by
 $26 \cdot 2^{-p}/((p-1) \log 2) < 13 \cdot 2^{-p}$.
 The same holds for $1/2 \log(x^2+y^2)$, thus the relative error on $\Re(u)$
-is bounded by $13 \cdot 2^{-p}$, thus by $13$ ulps.
+is bounded by $13 \cdot 2^{-p}$, thus by $14$ ulps, taking into account
+the rounding error of \verb|mpc_log|.
 
 For the imaginary part, since $\Im(z) > 0$, $z$ is either in the 1st or 2nd
 quadrant, and we can check that $i/(2z)$ lies in the 1st or 4th
@@ -1668,7 +1669,78 @@ on $y/x$. The total relative error on $y/x$ is thus less than
 $(1 + 4.25 \cdot 2^{-p}) (1 + 6.6 \cdot 2^{-p}) - 1 < 12.7 \cdot 2^{-p}$.
 Since the derivative of $\rm atan$ is less than $1$, this corresponds
 to a relative error less than $13 \cdot 2^{-p}$ on $\Im(u)$,
-thus less than $13$ ulps like for the real part.
+thus less than $14$ ulps like for the real part,
+taking into account the rounding error of \verb|mpc_log|.
+
+\paragraph{Case $|z|$ large with $\Im(z) < 0$.}
+In that case, when using the formula
+\[ {\rm asin}(z) = -i \log (iz + \sqrt{1-z^2}), \]
+the sum $iz + \sqrt{1-z^2}$ is close to $2iz$.
+Indeed, for large $|z|$ we have $\sqrt{1-z^2} \approx iz$ when
+$\Re(iz) > 0$, i.e., $\Im(z) < 0$.
+We first prove the following lemma.
+\begin{lemma}
+  Assume $t$ complex with $|t| \leq 1/4$, then
+  \[ \sqrt{1-t} = 1 + \varepsilon, \]
+  with $|\varepsilon| < |t|$.
+\end{lemma}
+\begin{proof}
+  TODO
+\end{proof}
+Applying this lemma to $t = 1/z^2$, as long as $|z| \ge 2$, we get:
+\[ iz + \sqrt{1-z^2} = iz + iz \sqrt{1-1/z^2}
+  = 2iz + iz \epsilon \quad
+  \mbox{with $|\varepsilon| < 1/|z^2|$.} \]
+Thus if we approximate $iz + \sqrt{1-z^2}$ by $2iz$,
+the relative error is bounded by $1/|2z^2|$.
+
+Let $e_z = {\rm max}(\Exp(\Re(z)),\Exp(\Im(z)))$.
+Then $|z| \ge 2^{e_z-1}$ thus $|2z^2| > 2^{2e_z-1}$.
+The relative error is bounded by $1/|2z^2| < 2^{-2e_z+1}$,
+thus by Prop.~\ref{prop:relerror} it is less than $2^{-2e_z+p+1}$ ulps,
+where $p$ is the working precision, and we assume $p \ge 4$.
+We further assume $2e_z \ge p+1$, so that this relative error is bounded
+by 1 ulp.
+
+We then form $t = 2iz = x + iy$, this is exact.
+
+We then compute $u = {\tt mpc\_log}(t)$.
+We have
+\[ \log t = \frac{1}{2} \log(x^2+y^2) + i \, {\rm atan2}(y,x). \]
+We analyze separately the induced error on the real and imaginary parts
+of $u \approx \log t$.
+
+For the real part, the relative error when approximating
+$iz + \sqrt{1-z^2}$ by $2iz$ is less than $2^{-p}$.
+This gives a relative error less than $(1 + \cdot 2^{-p})^2 - 1 < 2.1 \cdot 2^{-p}$
+on $x^2$ and $y^2$, and similarly for $x^2+y^2$.
+Now we deduce the relative error on $\log(x^2+y^2)$.
+Let $U = x^2+y^2$ and $V$ the corresponding exact value;
+we have shown that $U = V (1 + \varepsilon)$ with
+$|\varepsilon| < 2.1 \cdot 2^{-p}$.
+It follows $\log U = \log V + \log(1 + \varepsilon)$
+with $|\log(1 + \varepsilon)| < 2.3 \cdot 2^{-p}$.
+Since $|x|, |y| < 2^{e_t}$, we have $x^2+y^2 < 2^{2e_t+1} \le 2^{-2e_z+1}
+\le 2^{-p+1}$ since $2e_z \ge p$.
+Thus $|\log(x^2+y^2)| \ge (p-1) \log 2$,
+and the relative error on $\log(x^2+y^2)$ is bounded by
+$2.3 \cdot 2^{-p}/((p-1) \log 2) < 1.2 \cdot 2^{-p}$.
+The same holds for $1/2 \log(x^2+y^2)$, thus the relative error on $\Re(u)$
+is bounded by $1.2 \cdot 2^{-p}$, thus by $3$ ulps, taking into account
+the rounding error in \verb|mpc_log|.
+
+For the imaginary part, since $\Im(z) < 0$, $z$ is either in the 3rd or 4th
+quadrant, and we can check that $2iz$ lies in the 1st or 4th
+quadrant, thus ${\rm atan2}(y,x)$ lies in $(-\pi/2,\pi/2)$, and in both
+cases ${\rm atan2}(y,x) = {\rm atan}(y/x)$.
+Similarly to the real part, the error from the approximation by $2iz$
+induces a relative error less than $2^{-p}$ on $x$ and $y$,
+thus a relative error less than $(1 + 2^{-p})^2-1 < 2.1 \cdot 2^{-p}$
+on $y/x$.
+Since the derivative of $\rm atan$ is less than $1$, this corresponds
+to a relative error less than $2.1 \cdot 2^{-p}$ on $\Im(u)$,
+thus less than $3$ ulps like for the real part,
+taking into account the rounding error of \verb|mpc_log|.
 
 
 \subsection {\texttt {mpc\_pow}}

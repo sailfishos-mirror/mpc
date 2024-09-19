@@ -212,7 +212,6 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
 static int
 mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
 {
-  MPC_ASSERT(mpfr_signbit (mpc_imagref (z)) == 0); // Im(z) > 0
   mpfr_prec_t p = mpfr_get_prec (mpc_realref (t));
   /* mpc_asin_large_pos() is called with a variable t having the
      same precision for its real and imaginary parts */
@@ -237,12 +236,56 @@ mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
   // multiply by -i
   mpfr_swap (mpc_realref (t), mpc_imagref (t));
   MPFR_CHANGE_SIGN (mpc_imagref (t));
-  // the error bound on both parts is 13 ulps thus less than 2^4 ulps
+  // the error bound on both parts is 14 ulps thus less than 2^4 ulps
   int ok = mpfr_can_round (mpc_realref (t), p - 4, MPFR_RNDN, MPFR_RNDZ,
                            mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE(rnd) == MPFR_RNDN));
   ok = ok && mpfr_can_round (mpc_imagref (t), p - 4, MPFR_RNDN, MPFR_RNDZ,
                              mpfr_get_prec (mpc_imagref (rop)) + (MPC_RND_IM(rnd) == MPFR_RNDN));
   return ok;
+}
+
+/* Try to get correct rounding for large |z| with Im(z) < 0,
+   where t is an auxiliary variable with the same precision for both parts.
+   Assume |z| >= 2 and prec(t) >= 4. */
+static int
+mpc_asin_large_neg (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
+{
+  mpfr_prec_t p = mpfr_get_prec (mpc_realref (t));
+  /* mpc_asin_large_pos() is called with a variable t having the
+     same precision for its real and imaginary parts */
+  MPC_ASSERT(p >= 4);
+
+  /* See the error analysis in algorithms.tex. */
+  mpfr_exp_t ex = mpfr_get_exp (mpc_realref (z));
+  mpfr_exp_t ey = mpfr_get_exp (mpc_imagref (z));
+  MPC_ASSERT(ex >= 0 || ey >= 0);
+  mpfr_exp_t ez = (ex >= ey) ? ex : ey;
+  if (2 * ez < p + 1)
+    return 0;
+  // t=2*i*z
+  mpc_mul_2ui (t, z, 1, MPC_RNDNN); // 2*z
+  // multiply by i
+  mpfr_swap (mpc_realref (t), mpc_imagref (t));
+  MPFR_CHANGE_SIGN (mpc_realref (t));
+  mpc_log (t, t, MPC_RNDNN);
+  // multiply by -i
+  mpfr_swap (mpc_realref (t), mpc_imagref (t));
+  MPFR_CHANGE_SIGN (mpc_imagref (t));
+  // the error bound on both parts is 3 ulps thus less than 2^2 ulps
+  int ok = mpfr_can_round (mpc_realref (t), p - 2, MPFR_RNDN, MPFR_RNDZ,
+                           mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE(rnd) == MPFR_RNDN));
+  ok = ok && mpfr_can_round (mpc_imagref (t), p - 2, MPFR_RNDN, MPFR_RNDZ,
+                             mpfr_get_prec (mpc_imagref (rop)) + (MPC_RND_IM(rnd) == MPFR_RNDN));
+  return ok;
+}
+
+static int
+mpc_asin_large (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
+{
+  if (mpfr_signbit (mpc_imagref (z)) == 0) // Im(z) > 0
+    return mpc_asin_large_pos (rop, t, z, rnd);
+  else
+    return mpc_asin_large_neg (rop, t, z, rnd);
 }
 
 static int /* bool */
@@ -487,11 +530,9 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
         mpc_asin_series (rop, z1, op, rnd))
       break;
 
-    /* try special code for large z and Im(z) > 0 */
-    if ((mpfr_get_exp (mpc_realref (op)) >= 2 ||
-         mpfr_get_exp (mpc_imagref (op)) >= 2) &&
-        mpfr_signbit (mpc_imagref (op)) == 0 &&
-        mpc_asin_large_pos (rop, z1, op, rnd))
+    /* try special code for large z, requires |z| >= 2 */
+    int large_z = mpfr_get_exp (mpc_realref (op)) >= 2 || mpfr_get_exp (mpc_imagref (op)) >= 2;
+    if (large_z && mpc_asin_large (rop, z1, op, rnd))
       break;
 
     /* z1 <- z^2 */
