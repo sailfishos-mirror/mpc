@@ -56,7 +56,7 @@
 
 \title {MPC: Algorithms and Error Analysis}
 \author {Andreas Enge \and Philippe Th\'eveny \and Paul Zimmermann}
-\date {Draft; September 19, 2024}
+\date {Draft; September 20, 2024}
 
 \begin {document}
 \maketitle
@@ -1205,9 +1205,8 @@ trivially.
 \label {th:taylorpositive}
 In the situation of Theorem~\ref {th:taylor}, assume that $c = 0$ and
 $z \in B$. Write
-$c_n = f^{(n)} (0) / n!$,
-$f_N (z) = \sum_{n=0}^N c_n z^n$ and
-$g_N (z) = \sum_{n = N+1}^\infty c_n z^n$.
+$c_n = f^{(n)} (0) / n!$ and
+$f_N (z) = \sum_{n=0}^N c_n z^n$.
 Assume that the $c_n$ for $n > N$ are real and either all non-negative,
 or all non-positive. Then
 \[
@@ -1220,7 +1219,8 @@ with
 \end {theorem}
 
 \begin {proof}
-By definition, we have $R_N = g_N (z)$, so that
+By definition, we have $R_N = g_N (z)$ with
+$g_N (z) = \sum_{n = N+1}^\infty c_n z^n$, so that
 $|R_N| \leq \sum_{n=N+1}^\infty |c_n| \, |z|^n$,
 or
 $|R_N| \leq C_N |z|^{N+1}$
