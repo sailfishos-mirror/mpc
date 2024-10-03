@@ -1153,14 +1153,14 @@ on each of the real and imaginary parts.
 
 \begin{lemma} \label{lem:sqrtaux}
   Let $u$ be a complex number with $|u| \le 1/2$, then we have:
-  \[ |\Re(\sqrt{1+u})-1| \le 0.6 |u|, \quad |\Im(\sqrt{1+u})| \le 0.8 |\Im(u)|. \]
+  \[ |\Re \sqrt{1+u}-1| \le 0.6 |u|, \quad |\Im \sqrt{1+u}| \le 0.8 |\Im u|. \]
 \end{lemma}
 Note the bound for the real part is in terms of $|u|$, while that for the imaginary
-part is in terms of $|\Im(u)|$.
+part is in terms of $|\Im u|$.
 \begin{figure}[htp]
   \centerline{\includegraphics[width=5cm]{fig_sqrt.pdf}}
-  \caption{Graph of $|\Re(\sqrt{1+z}-1)|/|z|$ (in blue) and
-    $|\Im(\sqrt{1+z})|/|\Im(z)|$ (in red), for $z = e^{i t}/2$,
+  \caption{Graph of $|\Re \sqrt{1+z}-1|/|z|$ (in blue) and
+    $|\Im \sqrt{1+z}|/|\Im z|$ (in red), for $z = e^{i t}/2$,
     $0 \le t \le 2\pi$.} \label{fig_sqrt}
 \end{figure}
 
@@ -1168,7 +1168,8 @@ part is in terms of $|\Im(u)|$.
   See Fig.~\ref{fig_sqrt}, which considers the case where $|u|=1/2$,
   which is the worst case.
   The larger values for both the real part
-  and the imaginary part are obtained when $u$ approaches $-1/2$.
+  and the imaginary part are obtained when $t$ approaches $\pi$,
+  i.e., when $u$ approaches $-1/2$.
 \begin{comment}
 lre=[]
 lim=[]
@@ -1416,6 +1417,42 @@ Let $z = x + i y$. Then $\log (z) = \frac {1}{2} \log (x^2 + y^2) + i \atantwo (
 
 Let $w = \log (x^2 + y^2)$, rounded down. The error of the complex norm is \ulp{1}. The generic error of the real logarithm is then given by \ulp{$2^{2 - e_w} + 1$}, where $e_w$ is the exponent of $w$. For $e_w \geq 2$, this is bounded by \ulp{2} or 2~digits; otherwise, it is bounded by \ulp{$2^{3 - e_w}$} or $3 - e_w$ digits.
 
+\begin{lemma} \label{lem:logaux}
+  Let $u$ be a complex number with $|u| \le 1/2$, then we have:
+  \[ |\Re \log(1+u)| \le 1.4 |u|, \quad |\Im \log(1+u)| \le 2 |\Im u|. \]
+\end{lemma}
+Note the bound for the real part is in terms of $|u|$, while that for the imaginary
+part is in terms of $|\Im u|$.
+\begin{figure}[htp]
+  \centerline{\includegraphics[width=5cm]{fig_log.pdf}}
+  \caption{Graph of $|\Re \log(1+z)|/|z|$ (in blue) and
+    $|\Im \log(1+z)|/|\Im z|$ (in red), for $z = e^{i t}/2$,
+    $0 \le t \le 2\pi$.} \label{fig_log}
+\end{figure}
+
+\begin{proof}
+  See Fig.~\ref{fig_log}, which considers the case where $|u|=1/2$,
+  which is the worst case.
+  The larger values for both the real part
+  and the imaginary part are obtained when $t$ approaches $\pi$,
+  i.e., when $u$ approaches $-1/2$.
+\begin{comment}
+lre=[]
+lim=[]
+k=1001
+r=1/2
+for j in [0..2*k]:
+   z=n(r*exp(i*j*pi/k))
+   if z!=0 and imag(z)!=0:
+      re=abs(real(log(1+z)))
+      im=abs(imag(log(1+z)))
+      lre.append((j*pi/k,re/abs(z)))
+      lim.append((j*pi/k,im/abs(imag(z))))
+p=list_plot(lre,color='blue')+list_plot(lim,color='red')
+p.save("fig_log.pdf")
+\end{comment}
+\end{proof}
+
 \subsection {\texttt {mpc\_tan}}
 
 Let $z = x + i y$ with $x \neq 0$ and $y \neq 0$.
@@ -1653,7 +1690,7 @@ p.save("fig_asin.pdf")
     unit circle in black.} \label{fig_asin}
 \end{figure}  
 In the case $|z|$ large and $\Im(z) < 0$, when using the formula
-\[ {\rm asin}(z) = -i \log (iz + \sqrt{1-z^2}), \]
+\[ \asin(z) = -i \log (iz + \sqrt{1-z^2}), \]
 the sum $iz + \sqrt{1-z^2}$ is close to $2iz$.
 Indeed, for large $|z|$ we have $\sqrt{1-z^2} \approx iz$ when
 $\Re(iz) > 0$, i.e., $\Im(z) < 0$.
