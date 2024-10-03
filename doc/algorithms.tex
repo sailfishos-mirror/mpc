@@ -1658,14 +1658,35 @@ the sum $iz + \sqrt{1-z^2}$ is close to $2iz$.
 Indeed, for large $|z|$ we have $\sqrt{1-z^2} \approx iz$ when
 $\Re(iz) > 0$, i.e., $\Im(z) < 0$.
 We first prove the following lemma.
-\begin{lemma}
+\begin{lemma} \label{lemma17}
   Assume $t$ complex with $|t| \leq 1/4$, then
   \[ \sqrt{1-t} = 1 + \varepsilon, \]
   with $|\varepsilon| < |t|$.
 \end{lemma}
+\begin{figure}[htp]
+\begin{comment}
+l=[]
+r=1/4
+k=1001
+for j in range(2*k):
+   t = n(r*exp(i*j*pi/k))
+   u = sqrt(1-t)-1
+   l.append((j*pi/k,abs(u)/abs(t)))
+p=list_plot(l,color='blue')
+p.save("fig_lemma17.pdf")
+\end{comment}
+  \centerline{\includegraphics[width=5cm]{fig_lemma17.pdf}}
+  \caption{Graph of $|\sqrt{1-t}-1|/|t|$ for
+    $t = e^{iu}/4$, $0 \le u \le 2\pi$.} \label{fig_lemma17}
+\end{figure}  
+
 \begin{proof}
-  TODO
+  We see on Figure~\ref{fig_lemma17}, which considers the worst case
+  $|t| = 1/4$, that the maximum of $|\sqrt{1-t}-1|/|t|$
+  is obtained for $u$ near $0$ or $2\pi$,
+  i.e., $t = 1/4$, and this maximum is less than $0.54 < 1$.
 \end{proof}
+
 Applying this lemma to $t = 1/z^2$, as long as $|z| \ge 2$, we get:
 \[ iz + \sqrt{1-z^2} = iz + iz \sqrt{1-1/z^2}
   = 2iz + iz \epsilon \quad
