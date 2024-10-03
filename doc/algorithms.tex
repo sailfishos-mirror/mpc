@@ -1146,8 +1146,8 @@ for $0 < x \leq 1$, which comes from $1 - x \leq \sqrt{1-x}$.
 Assume $z = x + iy$ with $|y/x| < 2^{-k}$ for $k \ge 1$, and $x > 0$.
 We assume the input error $\epsilon$ on $z$ is bounded relatively
 on both the real and imaginary parts:
-$z' = z + \epsilon$ with $|\Re(\epsilon)| < 2^{-p} |x|$ and
-$|\Im(\epsilon)| < 2^{-p} |y|$, for $p \ge 1$.
+$z' = z + \epsilon$ with $|\Re \epsilon| < 2^{-p} |x|$ and
+$|\Im \epsilon| < 2^{-p} |y|$, for $p \ge 1$.
 In this case we can obtain a finer bound for the induced error
 on each of the real and imaginary parts.
 
@@ -1192,12 +1192,12 @@ Define $u := \epsilon/z$:
 $|\epsilon| \le \sqrt{2^{-2p} (x^2 + y^2)} = 2^{-p} |z|$,
 thus $|u| \le 2^{-p}$.
 Applying Lemma~\ref{lem:sqrtaux}
-yields $|\Re(\sqrt{1+u})-1| \le 0.6 |u|$ and
-$|\Im(\sqrt{1+u})| \le 0.8 |\Im(u)|$.
+yields $|\Re \sqrt{1+u}-1| \le 0.6 |u|$ and
+$|\Im\sqrt{1+u}| \le 0.8 |\Im u|$.
 Now if $z = r e^{i\alpha}$ in polar coordinates,
 $\sqrt{z} = \sqrt{r} e^{i\alpha/2}$, and it follows that
-$|\Im(\sqrt{z})/\Re(\sqrt{z})| = |\tan(\alpha/2)| \le |\tan(\alpha)|
-\le |\Im(z)/\Re(z)| < 2^{-k}$.
+$|\Im\sqrt{z}/\Re\sqrt{z}| = |\tan(\alpha/2)| \le |\tan(\alpha)|
+\le |\Im z/\Re z| < 2^{-k}$.
 If $\sqrt{z} = a+ib$ and $\sqrt{1+u} = (1+c)+id$, we obtain
 $|b/a| < 2^{-k}$, $|c| \le 0.6 \cdot 2^{-p}$, $|d| \le 0.8 |\Im(u)|$.
 
@@ -1218,17 +1218,17 @@ The induced error is thus:
 Its real part is bounded by:
 \[ |ac| + |bd| \le (0.6 \cdot 2^{-p} + 0.8 \cdot 2^{-p-2k+1}) |a|
   \le 2^{-p} \cdot |a|, \]
-amd its imaginary part is bounded by:
+and its imaginary part is bounded by:
 \[ |ad| + |bc| \le (0.8 \cdot 2^{-p-k+1} + 0.6 \cdot 2^{-p-k}) |a|
   < 2.2 \cdot 2^{-p-k} \cdot |a|. \]
 We have proven the following lemma.
 \begin{lemma} \label{lem:sqrt}
   Assume $z = x + iy$ with $|y/x| < 2^{-k}$, $k \ge 1$ and $x > 0$.
-  Let $z' = z + \epsilon$ with $|\Re(\epsilon)| < 2^{-p} |x|$
-  and $|\Im(\epsilon)| < 2^{-p} |y|$, for $p \ge 1$.
+  Let $z' = z + \epsilon$ with $|\Re\epsilon| < 2^{-p} |x|$
+  and $|\Im\epsilon| < 2^{-p} |y|$, for $p \ge 1$.
   Then $\sqrt{z'} = \sqrt{z} + \tau$ with:
-  \[ |\Re(\tau)| \le 2^{-p} |\Re(\sqrt{z})|, \quad
-     |\Im(\tau)| \le 2^{-p-k+1} |\Im(\sqrt{z})|. \]
+  \[ |\Re\tau| \le 2^{-p} |\Re\sqrt{z}|, \quad
+     |\Im\tau| \le 2^{-p-k+1} |\Re\sqrt{z}|. \]
 \end{lemma}
 
 \section {Complex analysis}
@@ -1419,7 +1419,8 @@ Let $w = \log (x^2 + y^2)$, rounded down. The error of the complex norm is \ulp{
 
 \begin{lemma} \label{lem:logaux}
   Let $u$ be a complex number with $|u| \le 1/2$, then we have:
-  \[ |\Re \log(1+u)| \le 1.4 |u|, \quad |\Im \log(1+u)| \le 2 |\Im u|. \]
+  \[ |\Re \log(1+u)| \le 2 \log 2 \cdot |u|,
+    \quad |\Im \log(1+u)| \le 2 \cdot |\Im u|. \]
 \end{lemma}
 Note the bound for the real part is in terms of $|u|$, while that for the imaginary
 part is in terms of $|\Im u|$.
@@ -1451,6 +1452,33 @@ for j in [0..2*k]:
 p=list_plot(lre,color='blue')+list_plot(lim,color='red')
 p.save("fig_log.pdf")
 \end{comment}
+\end{proof}
+
+\begin{lemma} \label{lem:log}
+  Assume $z = x + iy$ with $|y/x| < 2^{-k}$, $k \ge 1$ and $x \ge 2$.
+  Let $z' = z + \epsilon$ with $|\Re\epsilon| < 2^{-p} |x|$
+  and $|\Im\epsilon| < 2^{-p} |y|$, for $p \ge 1$.
+  Then $\log z' = \log z + \tau$ with:
+  \[ |\Re\tau| \le 2^{-p+1} |\Re\log z|, \quad
+     |\Im\tau| \le 2^{-p-k+3} |\Re\log z|. \]
+\end{lemma}
+\begin{proof}
+  We follow the proof of Lemma~\ref{lem:sqrt}.
+  We have $\log z' = \log(z + \epsilon) = \log z \cdot \log(1+\epsilon/z)$.
+  Let $u = \epsilon/z$. As in the proof of Lemma~\ref{lem:sqrt},
+  we have $|u| \le 2^{-p}$.
+  Applying Lemma~\ref{lem:logaux} yields
+  $|\Re \log(1+u)| \le 2 \log 2 \cdot |u|$ and
+  $|\Im \log(1+u)| \le 2 \cdot |\Im u|$.
+  Since $|u| \le 2^{-p}$ and
+  as in the proof of Lemma~\ref{lem:sqrt},
+  $|\Im u| \le 2^{-p-k+1}$, it follows
+  $|\Re \log(1+u)| \le 2 \log 2 \cdot 2^{-p}$ and
+  $|\Im \log(1+u)| \le 2^{-p-k+2}$.
+  Now it is easy to check that if $x \ge 2$, then
+  $|\Re\log z| \ge \log 2$, thus
+  $|\Re \log(1+u)| \le 2^{-p+1} |\Re\log z|$ and
+  $|\Im \log(1+u)| \le 2^{-p-k+3} |\Re\log z|$.
 \end{proof}
 
 \subsection {\texttt {mpc\_tan}}
