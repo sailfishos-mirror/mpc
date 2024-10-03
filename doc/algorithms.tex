@@ -1157,36 +1157,32 @@ on each of the real and imaginary parts.
 \end{lemma}
 Note the bound for the real part is in terms of $|u|$, while that for the imaginary
 part is in terms of $|\Im(u)|$.
+\begin{figure}[htp]
+  \centerline{\includegraphics[width=5cm]{fig_sqrt.pdf}}
+  \caption{Graph of $|\Re(\sqrt{1+z}-1)|/|z|$ (in blue) and
+    $|\Im(\sqrt{1+z})|/|\Im(z)|$ (in red), for $z = e^{i t}/2$,
+    $0 \le t \le 2\pi$.} \label{fig_sqrt}
+\end{figure}
 
 \begin{proof}
-  This is easy by ``graphical'' analysis. The worst case for both the real part
-  and the imaginary part is when $u$ approaches $-1/2$.
+  See Fig.~\ref{fig_sqrt}, which considers the case where $|u|=1/2$,
+  which is the worst case.
+  The larger values for both the real part
+  and the imaginary part are obtained when $u$ approaches $-1/2$.
 \begin{comment}
-sage: k=7; r=1/2
-sage: for j in [0..2*k]:
-....:     z=n(r*exp(i*j*pi/k))
-....:     print(j,z,abs(real(sqrt(1+z)-1))/abs(z))
-0 0.500000000000000 0.449489742783178
-1 0.450484433951210 + 0.216941869558779*I 0.415409947736925
-2 0.311744900929367 + 0.390915741234015*I 0.315383224097579
-3 0.111260466978157 + 0.487463956090912*I 0.156263064927417
-4 -0.111260466978157 + 0.487463956090912*I 0.0494175466565054
-5 -0.311744900929367 + 0.390915741234015*I 0.279663363756074
-6 -0.450484433951210 + 0.216941869558779*I 0.489831708673434
-7 -0.500000000000000 0.585786437626905
-8 -0.450484433951210 - 0.216941869558779*I 0.489831708673434
-9 -0.311744900929367 - 0.390915741234015*I 0.279663363756075
-10 -0.111260466978157 - 0.487463956090912*I 0.0494175466565054
-11 0.111260466978157 - 0.487463956090912*I 0.156263064927417
-12 0.311744900929367 - 0.390915741234015*I 0.315383224097579
-13 0.450484433951210 - 0.216941869558779*I 0.415409947736925
-14 0.500000000000000 0.449489742783178
-sage: k=1001
-sage: for j in [1..k-1]:
-....:     z=n(r*exp(i*j*pi/k))
-....:     print(j,z,abs(imag(sqrt(1+z)))/abs(imag(z)))
-...
-1000 -0.499997537528331 + 0.00156922452357623*I 0.707104169363970
+lre=[]
+lim=[]
+k=1001
+r=1/2
+for j in [0..2*k]:
+   z=n(r*exp(i*j*pi/k))
+   if z!=0 and imag(z)!=0:
+      re=abs(real(sqrt(1+z)-1))
+      im=abs(imag(sqrt(1+z)))
+      lre.append((j*pi/k,re/abs(z)))
+      lim.append((j*pi/k,im/abs(imag(z))))
+p=list_plot(lre,color='blue')+list_plot(lim,color='red')
+p.save("fig_sqrt.pdf")
 \end{comment}
 \end{proof}
 
@@ -1629,141 +1625,10 @@ parts are multiplied by $2^{-\delta}$ too, the same holds for the recurrence
 on $\varepsilon_k$ and their solutions. Thus the final error bound on
 $\Im s$ is multiplied by $2^{-\delta}$ too.
 
-
-\paragraph {Large absolute value.}
-With $\asin$ being an odd function, we may assume without loss of generality
-that $\Im (z) > 0$.
-We use the formula
-\[
-\asin (z) = -i \log \left( i z + \sqrt {1-z^2} \right)
-\]
-in which
-\[
-\sqrt {1 - z^2} = \pm i z \sqrt {1 - \frac {1}{z^2}}
-\]
-with the sign chosen such that the righthand side has positive real part.
-For large $|z|$ with $\Im (z) > 0$, the minus sign is taken, and there
-will be cancellation between the two terms in the argument of the
-logarithm.
-
-More precisely, we may approximate the latter square root by its
-linear Taylor expansion around~$0$ as follows.
-
-\begin {lemma}
-\label {lm:sqrttaylor}
-If $t$ is a complex number with $|t| \leq 1/4$, then
-\[
-\sqrt {1 - t} = 1 - t / 2 + R_1
-\]
-with
-\[
-|R_1| < |t|^2 / 6.
-\]
-\end {lemma}
-
-\begin {proof}
-This is a direct application of Theorem~\ref {th:taylorpositive}
-with $r = 1 / 4$, which yields
-\[
-|R_1| \leq \frac {\left| \sqrt {3/4} - \big( 1 - (1/4) / 2 \big) \right|}
-                 {(1/4)^2}
-           |t|^2
-      =    \left( 14 - 8 \, \sqrt {3} \right) |t|^2
-      <    |t|^2 / 6.
-\]
-It remains to check the hypotheses of the theorem.
-We may choose $U = B (0, 1)$, where $1$ is the radius of convergence.
-Concerning the Taylor coefficients $c_n$, we have $c_0 = 1$ and $c_n < 0$
-for all $n \geq 1$, since then
-$f^{(n)} (t) = (1/2)(-1/2)(-3/2)\cdots(-(2n-3)/2)
-               (-1)^n (1-t)^{-(2n-1)/2)}$
-with a total of $2n - 1$ negative factors.
-\end {proof}
-
-Applying the lemma to $t = 1/z^2$, as long as $|z| \geq 2$, we get:
-\[ iz + \sqrt{1-z^2} = \frac{i}{2z} (1 + \varepsilon) \quad
-  \mbox{with $|\varepsilon| < 1/|6z^2|$.} \]
-Thus if we approximate $iz + \sqrt{1-z^2}$ by $i/(2z)$,
-the relative error is bounded by $1/|6z^2|$.
-
-Let $e_z = {\rm max}(\Exp(\Re(z)),\Exp(\Im(z)))$.
-Then $|z| \ge 2^{e_z-1}$ thus $6 |z|^2 > 2^{2e_z}$.
-The relative error is bounded by $1/|6z^2| < 2^{-2e_z}$,
-thus by Prop.~\ref{prop:relerror} it is less than $2^{-2e_z+p}$ ulps,
-where $p$ is the working precision, and we assume $p \ge 4$.
-We further assume $2e_z \ge p$, so that this relative error is bounded
-by 1 ulp.
-
-We then approximate $t \approx i/(2z)$ using \verb|mpc_ui_div| followed by
-a division by 2 and a multiplication by $i$, both being exact.
-If we note $t = x + iy$, then the rounding error on $x$ and $y$ due
-to \verb|mpc_ui_div| is at most one ulp.
-Let $e_t = {\rm max}(\Exp(x), \Exp(y))$.
-Since $|t| = 1/|2z|$, where $|2z| \ge 2^{e_z}$, we have
-$|t| \le 2^{-e_z}$, which implies that both the real and imaginary parts
-of $t$ have absolute value less than $2^{-e_z}$, thus
-$e_t \le -e_z$.
-
-We then compute $u = {\tt mpc\_log}(t)$.
-We have
-\[ \log t = \frac{1}{2} \log(x^2+y^2) + i \, {\rm atan2}(y,x). \]
-We analyze separately the induced error on the real and imaginary parts
-of $u \approx \log t$.
-
-For the real part, the rounding error of less than 1 ulp on $x$ when
-approximating $t \approx i/(2z)$ corresponds to a relative error of
-less than $2^{1-p}$ (Prop.~\ref{prop:relerror}).
-The same holds for $y$, thus for $x^2$ and $y^2$ we get a relative error
-less than $(1 + 2^{1-p})^2-1 \le 4.25 \cdot 2^{-p}$.
-The same bound holds for $x^2+y^2$.
-We know that the error when approximating
-$iz + \sqrt{1-z^2}$ by $i/(2z)$ is very close to $i/(8z^3)$,
-which is the next term of the Taylor expansion.
-From $i/(2z) \approx t = x+iy$, we get $i/(8z^3) \approx -t^3 =
-x (3y^2-x^2) + i y (y^2-3x^2)$.
-The relative error on the real part is thus bounded by
-$|3y^2-x^2| \le 3 \cdot {\rm max}(x^2,y^2) \le 3 \cdot 2^{2e_t} \le 3 \cdot 2^{-2e_z}
-\le 3 \cdot 2^{-p}$ since we assumed $2e_z \ge p$,
-and the same holds for the imaginary part.
-This gives a relative error less than $(1 + 3 \cdot 2^{-p})^2 - 1 < 6.6 \cdot 2^{-p}$
-on $x^2$ and $y^2$, and similarly for $x^2+y^2$.
-The total relative error on $x^2+y^2$ is thus bounded by
-$(1 + 4.25 \cdot 2^{-p}) (1 + 6.6 \cdot 2^{-p}) - 1 < 12.7 \cdot 2^{-p}$.
-Now we deduce the relative error on $\log(x^2+y^2)$.
-Let $U = x^2+y^2$ and $V$ the corresponding exact value;
-we have shown that $U = V (1 + \varepsilon)$ with
-$|\varepsilon| < 12.7 \cdot 2^{-p}$.
-It follows $\log U = \log V + \log(1 + \varepsilon)$
-with $|\log(1 + \varepsilon)| < 26 \cdot 2^{-p}$.
-Since $|x|, |y| < 2^{e_t}$, we have $x^2+y^2 < 2^{2e_t+1} \le 2^{-2e_z+1}
-\le 2^{-p+1}$ since $2e_z \ge p$.
-Thus $|\log(x^2+y^2)| \ge (p-1) \log 2$,
-and the relative error on $\log(x^2+y^2)$ is bounded by
-$26 \cdot 2^{-p}/((p-1) \log 2) < 13 \cdot 2^{-p}$.
-The same holds for $1/2 \log(x^2+y^2)$, thus the relative error on $\Re(u)$
-is bounded by $13 \cdot 2^{-p}$, thus by $14$ ulps, taking into account
-the rounding error of \verb|mpc_log|.
-
-For the imaginary part, since $\Im(z) > 0$, $z$ is either in the 1st or 2nd
-quadrant, and we can check that $i/(2z)$ lies in the 1st or 4th
-quadrant, thus ${\rm atan2}(y,x)$ lies in $(-\pi/2,\pi/2)$, and in both
-cases ${\rm atan2}(y,x) = {\rm atan}(y/x)$.
-The rounding error of less than 1 ulp on $x$ and $y$ corresponds to a
-relative error less than $2^{1-p}$ by Prop.~\ref{prop:relerror}, which
-gives a relative error less than $(1 + 2^{1-p})^2-1 \le 4.25 \cdot 2^{-p}$
-on $y/x$.
-Similarly to the real part, the error from the approximation by $i/(2z)$
-induces a relative error less than $3 \cdot 2^{-p}$ on $x$ and $y$,
-thus a relative error less than $(1 + 3 \cdot 2^{-p})^2-1 < 6.6 \cdot 2^{-p}$
-on $y/x$. The total relative error on $y/x$ is thus less than
-$(1 + 4.25 \cdot 2^{-p}) (1 + 6.6 \cdot 2^{-p}) - 1 < 12.7 \cdot 2^{-p}$.
-Since the derivative of $\rm atan$ is less than $1$, this corresponds
-to a relative error less than $13 \cdot 2^{-p}$ on $\Im(u)$,
-thus less than $14$ ulps like for the real part,
-taking into account the rounding error of \verb|mpc_log|.
-
 \paragraph{Case $|z|$ large with $\Im(z) < 0$.}
-In that case, when using the formula
+For any complex $z$, the sum $iz + \sqrt{1-z^2}$ lies in the right complex
+plane, inside the unit circle for $\Im z > 0$, and outside it for $\Im z < 0$.
+In the case $|z|$ large and $\Im(z) < 0$, when using the formula
 \[ {\rm asin}(z) = -i \log (iz + \sqrt{1-z^2}), \]
 the sum $iz + \sqrt{1-z^2}$ is close to $2iz$.
 Indeed, for large $|z|$ we have $\sqrt{1-z^2} \approx iz$ when
