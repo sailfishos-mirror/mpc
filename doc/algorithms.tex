@@ -1627,7 +1627,31 @@ $\Im s$ is multiplied by $2^{-\delta}$ too.
 
 \paragraph{Case $|z|$ large with $\Im(z) < 0$.}
 For any complex $z$, the sum $iz + \sqrt{1-z^2}$ lies in the right complex
-plane, inside the unit circle for $\Im z > 0$, and outside it for $\Im z < 0$.
+plane, inside the unit circle for $\Im z > 0$, and outside it for $\Im z < 0$
+(see Fig.~\ref{fig_asin}).
+Therefore to avoid cancellation it is better to force $\Im z < 0$,
+by reducing the argument using the formula $\asin (-z) = - \asin z$.
+\begin{figure}[htp]
+\begin{comment}
+lpos=[]
+lneg=[]
+C=ComplexField(53)
+for j in range(1000):
+   z = C.random_element()
+   t = i*z+sqrt(1-z^2)
+   if imag(z)>0:
+      lpos.append((real(t),imag(t)))
+   else:
+      lneg.append((real(t),imag(t)))
+p=list_plot(lpos,color='blue')+list_plot(lneg,color='red')
+p+=polar_plot(1,(x,-pi/2,pi/2),color='black')
+p.save("fig_asin.pdf")
+\end{comment}
+  \centerline{\includegraphics[width=5cm]{fig_asin.pdf}}
+  \caption{Graph of $iz + \sqrt{1-z^2}$ for 1000 random values of $z$,
+    in blue for $\Im{z} > 0$, and in red for $\Im{z} \le 0$, with the
+    unit circle in black.} \label{fig_asin}
+\end{figure}  
 In the case $|z|$ large and $\Im(z) < 0$, when using the formula
 \[ {\rm asin}(z) = -i \log (iz + \sqrt{1-z^2}), \]
 the sum $iz + \sqrt{1-z^2}$ is close to $2iz$.
