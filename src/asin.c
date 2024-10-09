@@ -258,6 +258,7 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
    mpfr_srcptr x, y;
    mpfr_t s, t;
    int inex_re, inex_im, ok;
+   mpfr_rnd_t rnd_re = MPC_RND_RE (rnd), rnd_im = MPC_RND_IM (rnd);
 
    /* We have asin (x) ~ x,
       |y| <= |y| / sqrt (1 - x^2) <= sqrt (4/3) * |y|,
@@ -284,34 +285,64 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
    prec = prec_re + 7;
    mpfr_init2 (s, prec);
    mpfr_asin (s, x, MPFR_RNDN);
-   /* The error is bounded above by 13*|y|^2 + 1/2 * 2^(Exp (s) - prec)
-      <= 2^(max (2 * Exp (y) + 5, Exp (s) - prec)). */
-   es = mpfr_get_exp (s);
-   err = MPC_MAX (2 * ey + 5, es - prec);
-   ok = mpfr_can_round (s, es - err, MPFR_RNDN, MPFR_RNDZ,
-      mpfr_get_prec (mpc_realref (rop))
-         + (MPC_RND_RE (rnd) == MPFR_RNDN));
+   /* If x is tiny, then asin(x) rounds to x, then mpfr_can_round will fail,
+      but since asin(x) = x + x^3/6 + O(x^5), we know how to round. */
+   if (mpfr_cmp (s, x) == 0)
+   {
+     if (MPC_IS_LIKE_RNDA(rnd_re, MPFR_SIGNBIT(s)))
+       if (MPFR_SIGNBIT(s) == 0)
+         mpfr_nextabove (s);
+       else
+         mpfr_nextbelow (s);
+     // for other rounding modes, asin(x) rounds to x
+     ok = 1;
+   } else {
+     /* The error is bounded above by 13*|y|^2 + 1/2 * 2^(Exp (s) - prec)
+        <= 2^(max (2 * Exp (y) + 5, Exp (s) - prec)). */
+     es = mpfr_get_exp (s);
+     err = MPC_MAX (2 * ey + 5, es - prec);
+     ok = mpfr_can_round (s, es - err, MPFR_RNDN, MPFR_RNDZ,
+                          mpfr_get_prec (mpc_realref (rop)) + (rnd_re == MPFR_RNDN));
+   }
 
    if (ok) {
       /* Imaginary part. */
       prec = prec_im + 7;
       mpfr_init2 (t, prec);
-      mpfr_mul (t, x, x, MPFR_RNDU); /* 0 < t <= 1/4, error 1 ulp */
-      mpfr_ui_sub (t, 1, t, MPFR_RNDD);
-         /* 3/4 <= t < 1, error 2 ulp, epsilon- = 0 since rounded down */
-      mpfr_sqrt (t, t, MPFR_RNDD);
-         /* error 3 ulp: propagation error stable since epsilon- = 0,
-            1 ulp for rounding; see ssec:proprealsqrt in algorithms.tex */
-      mpfr_div (t, y, t, MPFR_RNDA);
-         /* error 7 ulp: since denominator rounded down, previous error
-            multiplied by 2, 1 ulp additional rounding error */
-      ok = mpfr_can_round (t, prec - 3, MPFR_RNDA, MPFR_RNDZ,
-         mpfr_get_prec (mpc_imagref (rop))
-            + (MPC_RND_IM (rnd) == MPFR_RNDN));
+      mpfr_mul (t, x, x, MPFR_RNDN); /* 0 < t <= 1/4, t = x^2 * (1 + theta1) with
+                                        |theta1| < u := 2^-prec with prec >= 8 */
+      mpfr_ui_sub (t, 1, t, MPFR_RNDN);
+      /* 3/4 <= t < 1, t = (1-t_in) * (1 + theta2) with |theta2| <= u
+         = (1 - x^2 * (1 + theta1)) * (1 + theta2) with |x^2| <= 1/4
+         = (1 - x^2) * (1 + theta1') * (1 + theta2) with |theta1'| <= 0.34*u
+         = (1 - x^2) * (1 + theta3) with |theta3| < 1.35*u */
+      mpfr_sqrt (t, t, MPFR_RNDN);
+      /* 3/4 <= t < 1, t = sqrt(t_in) * (1 + theta4) with |theta4| <= u
+                         = sqrt(1-x^2) * sqrt(1 + theta3) * (1 + theta4)
+                         = sqrt(1-x^2) * (1 + theta5) with |theta5| < 1.68*u */
+      mpfr_div (t, y, t, MPFR_RNDN);
+      /* t = y/t_in * (1 + theta6) with |theta6| <= u
+           = y/sqrt(1-x^2) * (1 + theta6)/(1 + theta5)
+           = y/sqrt(1-x^2) * (1 + theta7) with |theta7| < 2.70*u
+           The relative error is bounded by 2.70*2^-prec, thus by 3 ulps. */
+      if (mpfr_cmp (t, y) == 0) {
+        /* If t=y, then since the error is bounded by 3 ulps,
+           and prec(t) = prec_im + 7, then we know the imaginary part
+           rounds either to t or to the adjacent number away from zero. */
+        if (MPC_IS_LIKE_RNDA(rnd_im, MPFR_SIGNBIT(t)))
+          if (MPFR_SIGNBIT(t) == 0)
+            mpfr_nextabove (t);
+          else
+            mpfr_nextbelow (t);
+        // for other rounding modes, y/sqrt(1-x) rounds to y
+        ok = 1;
+      } else
+        ok = mpfr_can_round (t, prec - 2, MPFR_RNDN, MPFR_RNDZ,
+                             mpfr_get_prec (mpc_imagref (rop)) + (rnd_im == MPFR_RNDN));
 
       if (ok) {
-         inex_re = mpfr_set (mpc_realref (rop), s, MPC_RND_RE (rnd));
-         inex_im = mpfr_set (mpc_imagref (rop), t, MPC_RND_IM (rnd));
+         inex_re = mpfr_set (mpc_realref (rop), s, rnd_re);
+         inex_im = mpfr_set (mpc_imagref (rop), t, rnd_im);
          *inex = MPC_INEX (inex_re, inex_im);
       }
 
@@ -327,14 +358,13 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
 int
 mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
-  int bug = mpfr_get_d (mpc_realref (op), MPFR_RNDN) == -0x9.b90060665d6c8p-1024;
   mpfr_prec_t p, p_re, p_im;
   mpfr_rnd_t rnd_re, rnd_im;
   mpc_t z1;
   int inex, inex_re, inex_im, loop = 0;
   mpfr_exp_t saved_emin, saved_emax, err, olderr, ey0;
 
-  /* special values */
+  /* case Re(op)=NaN or Im(op)=NaN */
   if (mpfr_nan_p (mpc_realref (op)) || mpfr_nan_p (mpc_imagref (op)))
     {
       if (mpfr_inf_p (mpc_realref (op)) || mpfr_inf_p (mpc_imagref (op)))
@@ -356,6 +386,7 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
       return 0;
     }
 
+  /* case Re(op)=Inf or Im(op)=Inf */
   if (mpfr_inf_p (mpc_realref (op)) || mpfr_inf_p (mpc_imagref (op)))
     {
       if (mpfr_inf_p (mpc_realref (op)))
@@ -485,7 +516,6 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 
     MPC_LOOP_NEXT(loop, op, rop);
     p += (loop <= 2) ? mpc_ceil_log2 (p) + 3 : p / 2; // ensures p>=4 in mpc_asin_large()
-    if (bug) printf ("loop=%d p=%lu\n", loop, p);
     mpc_set_prec (z1, p);
 
     /* try special code for 1+i*y with tiny y */
@@ -545,7 +575,6 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
        ex <= p-2, where p is the working precision. */
     dif = mpfr_get_exp (mpc_realref (z1)) - mpfr_get_exp (mpc_imagref (z1));
     lem_sqrt = mpfr_sgn (mpc_realref (z1)) > 0 && ex <= p - 2 && dif >= 2;
-    if (bug) printf ("lem_sqrt=%d\n", lem_sqrt);
 
     mpc_sqrt (z1, z1, MPC_RNDNN);
 
@@ -576,8 +605,6 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
       err = (ex <= 0) ? 1 : ex + 1;
       err_x = err_y = err;
     }
-    if (bug) mpfr_printf ("err=%ld z1=(%.10Ra,%.10Ra)\n", err,
-                          mpc_realref (z1), mpc_imagref (z1));
     /* err(Re(z1)) <= 2^err_x * ulp(Re(z1))
        err(Im(z1)) <= 2^err_y * ulp(Im(z1)) */
 
@@ -590,13 +617,10 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
       continue;
     ex -= mpfr_get_exp (mpc_realref(z1)); /* cancellation in x */
     ey -= mpfr_get_exp (mpc_imagref(z1)); /* cancellation in y */
-    if (bug) mpfr_printf ("before log: ex=%ld ey=%ld z1=(%.10Ra,%.10Ra)\n", ex, ey,
-                          mpc_realref (z1), mpc_imagref (z1));
     err_x += ex; // add cancellation in x
     err_y += ey; // add cancellation in y
     err_x = (err_x <= 0) ? 1 : err_x + 1; /* rounding error in sub/add */
     err_y = (err_y <= 0) ? 1 : err_y + 1; /* rounding error in sub/add */
-    if (bug) printf ("err_x=%ld err_y=%ld\n", err_x, err_y);
     /* z1 <- log(z1): if z1 = z + h, then log(z1) = log(z) + h/t with
        |t| >= min(|z1|,|z|) */
     ex = mpfr_get_exp (mpc_realref(z1));
@@ -630,12 +654,10 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     else {
       err_x += ex - p; /* revert to absolute error <= 2^err_x */
       err_y += ey - p; /* revert to absolute error <= 2^err_y */
-      if (bug) printf ("just before log: err_x=%ld err_y=%ld\n", err_x, err_y);
       /* the error h before the log contributes to h/t */
       err = (err_x >= err_y) ? err_x : err_y;
       ex = (ex >= ey) ? ex : ey;
       err -= ex - 1; /* 1/|t| <= 1/|z| <= 2^(1-ex) */
-      if (bug) printf ("err=%ld\n", err);
       /* express err in terms of ulp(Re(z1)) */
       ex = mpfr_get_exp (mpc_realref(z1));
       ey = mpfr_get_exp (mpc_imagref(z1));
@@ -648,7 +670,6 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     /* z1 <- -i*z1 */
     mpfr_swap (mpc_realref(z1), mpc_imagref(z1));
     mpfr_neg (mpc_imagref(z1), mpc_imagref(z1), MPFR_RNDN);
-    if (bug) printf ("err_x=%ld err_y=%ld\n", err_x, err_y);
     if (mpfr_can_round (mpc_realref(z1), p - err_y, MPFR_RNDN, MPFR_RNDZ,
                         p_re + (rnd_re == MPFR_RNDN)) &&
         mpfr_can_round (mpc_imagref(z1), p - err_x, MPFR_RNDN, MPFR_RNDZ,
