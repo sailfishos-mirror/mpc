@@ -211,10 +211,10 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
            if (mpfr_zero_p (w))
              underflow = ok = 1;
            /* If |x|=1 and y is tiny, then log(x^2+y^2) = log(1+y^2)
-              = y^2 + t with -y^4 < t < 0 thus we can round when y^2 is
-              exact and |y^4| < 1/2 ulp(w) */
-           else if (4 * mpfr_get_exp (y) < mpfr_get_exp(w) - prec &&
-                    2 * mpfr_get_prec (y) <= prec) {
+              = y^2 + t with -y^4/2 < t < 0 thus we can round when
+              |y^2/2| < 2^(-prec_re-1), since then the relative error is
+              less than 1/2 ulp(re) */
+           else if (2 * mpfr_get_exp (y) <= -mpfr_get_prec (mpc_realref (rop))) {
              mpfr_sqr (w, y, MPFR_RNDN);
              mpfr_div_2ui (w, w, 1, MPFR_RNDN); // 1/2 log(1+y^2)
              // slighly modify w towards zero
