@@ -206,13 +206,30 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
 
          /* handle one special case: |x|=1, and (y/x)^2 underflows;
             then 1/2*log(x^2+y^2) \approx 1/2*y^2 also underflows.  */
-         if (   (mpfr_cmp_si (x, -1) == 0 || mpfr_cmp_ui (x, 1) == 0)
-             && mpfr_zero_p (w))
-            underflow = 1;
+         if (mpfr_cmp_si (x, -1) == 0 || mpfr_cmp_ui (x, 1) == 0)
+         {
+           if (mpfr_zero_p (w))
+             underflow = ok = 1;
+           /* If |x|=1 and y is tiny, then log(x^2+y^2) = log(1+y^2)
+              = y^2 + t with -y^4 < t < 0 thus we can round when y^2 is
+              exact and |y^4| < 1/2 ulp(w) */
+           else if (4 * mpfr_get_exp (y) < mpfr_get_exp(w) - prec &&
+                    2 * mpfr_get_prec (y) <= prec) {
+             mpfr_sqr (w, y, MPFR_RNDN);
+             mpfr_div_2ui (w, w, 1, MPFR_RNDN); // 1/2 log(1+y^2)
+             // slighly modify w towards zero
+             if (MPFR_SIGNBIT(w) == 0)
+               mpfr_nextbelow (w);
+             else
+               mpfr_nextabove (w);
+             ok = 1;
+           }
+         }
+         else
+           ok = mpfr_can_round (w, prec - err, MPFR_RNDN, MPFR_RNDZ,
+                        mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == MPFR_RNDN));
 
-      } while (!underflow &&
-               !mpfr_can_round (w, prec - err, MPFR_RNDN, MPFR_RNDZ,
-               mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == MPFR_RNDN)));
+      } while (!ok);
       mpfr_clear (v);
    }
 
