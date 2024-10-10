@@ -98,6 +98,7 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   unsigned long k, err, kx, ky;
   mpfr_prec_t p;
   mpfr_exp_t ex, ey, e;
+  int tiny = 0; // does asin(z) round to z?
 
   /* assume z = (x,y) with |x|,|y| < 2^(-e) with e >= 1, see the error
      analysis in algorithms.tex */
@@ -117,7 +118,7 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   mpc_set (s, z, MPC_RNDNN);
   mpc_sqr (w, z, MPC_RNDNN);
   mpc_set (t, z, MPC_RNDNN);
-  for (k = 1; ;k++)
+  for (k = 1; ; k++)
     {
       mpfr_exp_t exp_x, exp_y;
       mpc_mul (t, t, w, MPC_RNDNN);
@@ -134,6 +135,21 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
     }
   mpc_clear (w);
   mpc_clear (t);
+  if (mpc_cmp (s, z) == 0) {
+    /* If s=z, we used only the first term of the Taylor expansion,
+       thus asin(z) rounds to z, with error term of the sign of t.
+       We sligthly modify the real/imaginary parts of s so that
+       mpfr_can_round does not fail, and to get the correct ternary value. */
+    if (mpfr_signbit (mpc_realref (t)) == 0)
+      mpfr_nextabove (mpc_realref (s));
+    else
+      mpfr_nextbelow (mpc_realref (s));
+    if (mpfr_signbit (mpc_imagref (t)) == 0)
+      mpfr_nextabove (mpc_imagref (s));
+    else
+      mpfr_nextbelow (mpc_imagref (s));
+    tiny = 1;
+  }
   /* check (2k-1)^2 is exactly representable */
   MPC_ASSERT(2 * k - 1 <= ULONG_MAX / (2 * k - 1));
   /* maximal absolute error on Re(s),Im(s) is:
@@ -174,9 +190,9 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   kx++;
   for (; kx > 2; err++, kx = (kx + 1) / 2);
   /* can we round Re(s) with error less than 2^(EXP(Re(s))-err) ? */
-  if (!mpfr_can_round (mpc_realref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
-                       mpfr_get_prec (mpc_realref (rop)) +
-                       (MPC_RND_RE(rnd) == MPFR_RNDN)))
+  if (!tiny && !mpfr_can_round (mpc_realref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
+                                mpfr_get_prec (mpc_realref (rop)) +
+                                (MPC_RND_RE(rnd) == MPFR_RNDN)))
     return 0;
 
   /* same for the imaginary part */
@@ -201,9 +217,9 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   ky++;
   for (err = 0; ky > 2; err++, ky = (ky + 1) / 2);
   /* can we round Im(s) with error less than 2^(EXP(Im(s))-err) ? */
-  return mpfr_can_round (mpc_imagref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
-                         mpfr_get_prec (mpc_imagref (rop)) +
-                         (MPC_RND_IM(rnd) == MPFR_RNDN));
+  return tiny || mpfr_can_round (mpc_imagref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
+                                 mpfr_get_prec (mpc_imagref (rop)) +
+                                 (MPC_RND_IM(rnd) == MPFR_RNDN));
 }
 
 /* Try to get correct rounding for large |z| with Im(z) < 0,
@@ -262,10 +278,10 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
 
    /* We have asin (x) ~ x,
       |y| <= |y| / sqrt (1 - x^2) <= sqrt (4/3) * |y|,
-      beta <= 2 * |y| < 1/2, 1 / 1 - beta < 2 and the error term is bounded
-      above by 4 * Pi * |y|^2 < 13 * |y|^2 < 16 * |y|^2.
+      beta <= 2 * |y| < 1/2, 1 / (1 - beta) < 2 and the error term is bounded
+      above by Pi/2 * 4 * |y|^2 * 2 < 16 * |y|^2.
       So to have a chance to round the imaginary part, we need roughly
-      log_2 (error term) \approx 2 * Exp (y) + 4
+      log_2 (error term) ~ 2 * Exp (y) + 4
       <= log_2 (ulp (y)) \approx Exp (y) - prec (imag (rop)), or
       Exp (y) <= -prec (imag (rop)) - 4.
       For the real part, we need
@@ -278,6 +294,8 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
    ey = mpfr_get_exp (y);
    prec_re = mpfr_get_prec (mpc_realref (rop));
    prec_im = mpfr_get_prec (mpc_imagref (rop));
+   if (ey > - prec_im - 4 || ex < 2 * ey + 4 + prec_re)
+     return 0;
 
    /* Real part. */
    prec = prec_re + 7;
