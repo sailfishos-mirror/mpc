@@ -1545,36 +1545,6 @@ as well as \texttt {mpc\_acosh} (through \texttt {mpc\_acos}) may be reduced
 to a computation of \texttt {mpc\_asin}. So improvements to this function
 will be immediately beneficial to the others.
 
-\paragraph{Tiny imaginary part with $|\Re z| < 1/2$ and $|\Im z| < 1/4$.}
-The function $\asin z$ is holomorphic in $B (0, 1)$
-with derivative $1/\sqrt{1-z^2}$, so we can apply Theorem~\ref {th:taylor}
-with $N = 1$.
-Letting $z = x + i y \in B (0, 1)$, we take $c = x$, $0 < r < 1 - |x|$
-and $\beta = |y| / r$ and obtain
-\[
-\asin (x + i y) = \asin x + i \, \frac{y}{\sqrt {1 - x^2}} + R_1
-\]
-with
-\[
-|R_1| \leq M_r \frac {\beta^2}{1 - \beta}
-\leq \frac {\pi}{2} \cdot \frac {\beta^2}{1 - \beta}:
-\]
-Since the Taylor expansion of $\asin$ has positive real coefficents,
-we have $|\asin (z)| \leq \asin (|z|) < \pi / 2$ for $|z| < 1$.
-Letting $r$ tend to $1 - |x|$ in the above formula, we deduce that the
-bound on $|R_1|$ still holds for $\beta = |y| / (1 - |x|)$.
-
-We apply this to $|x| < 1/2$ and $|y| < 1/4$, which implies $|z| < 1$;
-then $\beta \leq 2 |y| < 1/2$, $1 / (1 - \beta) < 2$ and
-\[
-|R_1| < 4 \pi |y|^2 < 16 |y|^2.
-\]
-Notice that to be able to round the imaginary part of the result,
-which is close to $y$, the relative error should be bounded above by
-about $2^{-p}$, where $p$ is the precision; so $|y|$ must be smaller
-than about $2^{-p}$.
-
-
 \paragraph{Tiny imaginary part with real part $1$.}
 First, in case the real part of the argument is exactly $1$,
 for $0 \leq y \leq 1$, we have $|\Re \asin (1 \pm iy) - \pi/2|

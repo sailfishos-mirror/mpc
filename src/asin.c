@@ -256,123 +256,6 @@ mpc_asin_large (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
   return ok;
 }
 
-static int /* bool */
-asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
-   /* Write z = x + i*y and assume |x| < 1/2 and |y| < 1/4, that is,
-      Exp (x) <= -1 and Exp (y) <= -2; this also implies |z| < 1.
-      The function computes the Taylor series of order 1 around x
-         asin (z) \approx asin (x) + i * y / sqrt (1 - x^2)
-      with error term bounded above by Pi/2 * beta^2 / (1 - beta)
-      where beta = |y| / (1 - |x|), see algorithms.tex.
-      If the result can be rounded in direction rnd to rop, the value is
-      stored in rop, the inexact value is stored in inex, and true is
-      returned; otherwise rop and inex are not changed, and false
-      is returned. */
-{
-   mpfr_exp_t ex, ey, es, err;
-   mpfr_prec_t prec_re, prec_im, prec;
-   mpfr_srcptr x, y;
-   mpfr_t s, t;
-   int inex_re, inex_im, ok;
-   mpfr_rnd_t rnd_re = MPC_RND_RE (rnd), rnd_im = MPC_RND_IM (rnd);
-
-   /* We have asin (x) ~ x,
-      |y| <= |y| / sqrt (1 - x^2) <= sqrt (4/3) * |y|,
-      beta <= 2 * |y| < 1/2, 1 / (1 - beta) < 2 and the error term is bounded
-      above by Pi/2 * 4 * |y|^2 * 2 < 16 * |y|^2.
-      So to have a chance to round the imaginary part, we need roughly
-      log_2 (error term) ~ 2 * Exp (y) + 4
-      <= log_2 (ulp (y)) \approx Exp (y) - prec (imag (rop)), or
-      Exp (y) <= -prec (imag (rop)) - 4.
-      For the real part, we need
-      2 * Exp (y) + 4 <= Exp (x) - prec (real (rop)), or
-      Exp (x) >= 2 * Exp (y) + 4 + prec (real (rop)).
-      Check this first. */
-   x = mpc_realref (z);
-   y = mpc_imagref (z);
-   ex = mpfr_get_exp (x);
-   ey = mpfr_get_exp (y);
-   prec_re = mpfr_get_prec (mpc_realref (rop));
-   prec_im = mpfr_get_prec (mpc_imagref (rop));
-   if (ey > - prec_im - 4 || ex < 2 * ey + 4 + prec_re)
-     return 0;
-
-   /* Real part. */
-   prec = prec_re + 7;
-   mpfr_init2 (s, prec);
-   mpfr_asin (s, x, MPFR_RNDN);
-   /* If x is tiny, then asin(x) rounds to x, then mpfr_can_round will fail,
-      but since asin(x) = x + x^3/6 + O(x^5), we know how to round. */
-   if (mpfr_cmp (s, x) == 0)
-   {
-     /* We perturb slightly s in the direction of x^3/6, for all rounding
-        modes, in order to get the correct rounding and ternary value. */
-     if (MPFR_SIGNBIT(s) == 0)
-       mpfr_nextabove (s);
-     else
-       mpfr_nextbelow (s);
-     ok = 1;
-   } else {
-     /* The error is bounded above by 13*|y|^2 + 1/2 * 2^(Exp (s) - prec)
-        <= 2^(max (2 * Exp (y) + 5, Exp (s) - prec)). */
-     es = mpfr_get_exp (s);
-     err = MPC_MAX (2 * ey + 5, es - prec);
-     ok = mpfr_can_round (s, es - err, MPFR_RNDN, MPFR_RNDZ,
-                          mpfr_get_prec (mpc_realref (rop)) + (rnd_re == MPFR_RNDN));
-   }
-
-   if (ok) {
-      /* Imaginary part. */
-      prec = prec_im + 7;
-      mpfr_init2 (t, prec);
-      mpfr_mul (t, x, x, MPFR_RNDN); /* 0 < t <= 1/4, t = x^2 * (1 + theta1) with
-                                        |theta1| < u := 2^-prec with prec >= 8 */
-      mpfr_ui_sub (t, 1, t, MPFR_RNDN);
-      /* 3/4 <= t < 1, t = (1-t_in) * (1 + theta2) with |theta2| <= u
-         = (1 - x^2 * (1 + theta1)) * (1 + theta2) with |x^2| <= 1/4
-         = (1 - x^2) * (1 + theta1') * (1 + theta2) with |theta1'| <= 0.34*u
-         = (1 - x^2) * (1 + theta3) with |theta3| < 1.35*u */
-      mpfr_sqrt (t, t, MPFR_RNDN);
-      /* 3/4 <= t < 1, t = sqrt(t_in) * (1 + theta4) with |theta4| <= u
-                         = sqrt(1-x^2) * sqrt(1 + theta3) * (1 + theta4)
-                         = sqrt(1-x^2) * (1 + theta5) with |theta5| < 1.68*u */
-      mpfr_div (t, y, t, MPFR_RNDN);
-      /* t = y/t_in * (1 + theta6) with |theta6| <= u
-           = y/sqrt(1-x^2) * (1 + theta6)/(1 + theta5)
-           = y/sqrt(1-x^2) * (1 + theta7) with |theta7| < 2.70*u
-           The relative error is bounded by 2.70*2^-prec, thus by 3 ulps. */
-      if (mpfr_cmp (t, y) == 0) {
-        /* If t=y, then since the error is bounded by 3 ulps,
-           and prec(t) = prec_im + 7, then we know the imaginary part
-           rounds either to t or to the adjacent number away from zero.
-           As for the real part, we perturb sligthly t in the right
-           direction, in order to get the correct rounding and the correct
-           ternary value. */
-        if (MPFR_SIGNBIT(t) == 0)
-          mpfr_nextabove (t);
-        else
-          mpfr_nextbelow (t);
-        // for other rounding modes, y/sqrt(1-x) rounds to y
-        ok = 1;
-      } else
-        ok = mpfr_can_round (t, prec - 2, MPFR_RNDN, MPFR_RNDZ,
-                             mpfr_get_prec (mpc_imagref (rop)) + (rnd_im == MPFR_RNDN));
-
-      if (ok) {
-         inex_re = mpfr_set (mpc_realref (rop), s, rnd_re);
-         inex_im = mpfr_set (mpc_imagref (rop), t, rnd_im);
-         *inex = MPC_INEX (inex_re, inex_im);
-      }
-
-      mpfr_clear (t);
-   }
-
-   mpfr_clear (s);
-
-   return ok;
-}
-
-
 int
 mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
@@ -487,13 +370,6 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 
       return MPC_INEX (0, inex_im);
     }
-
-   /* Try special code for |x| < 1/2 and |y| < 1/4. */
-   ey0 = mpfr_get_exp (mpc_imagref (op));
-   if (mpfr_get_exp (mpc_realref (op)) <= -1 && ey0 <= -2) {
-      if (asin_taylor1 (&inex, rop, op, rnd))
-         return inex;
-   }
 
   saved_emin = mpfr_get_emin ();
   saved_emax = mpfr_get_emax ();
