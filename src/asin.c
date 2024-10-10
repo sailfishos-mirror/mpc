@@ -278,8 +278,6 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
    ey = mpfr_get_exp (y);
    prec_re = mpfr_get_prec (mpc_realref (rop));
    prec_im = mpfr_get_prec (mpc_imagref (rop));
-   if (ey > - prec_im - 4 || ex < 2 * ey + 4 + prec_re)
-      return 0;
 
    /* Real part. */
    prec = prec_re + 7;
@@ -289,12 +287,12 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
       but since asin(x) = x + x^3/6 + O(x^5), we know how to round. */
    if (mpfr_cmp (s, x) == 0)
    {
-     if (MPC_IS_LIKE_RNDA(rnd_re, MPFR_SIGNBIT(s)))
-       if (MPFR_SIGNBIT(s) == 0)
-         mpfr_nextabove (s);
-       else
-         mpfr_nextbelow (s);
-     // for other rounding modes, asin(x) rounds to x
+     /* We perturb slightly s in the direction of x^3/6, for all rounding
+        modes, in order to get the correct rounding and ternary value. */
+     if (MPFR_SIGNBIT(s) == 0)
+       mpfr_nextabove (s);
+     else
+       mpfr_nextbelow (s);
      ok = 1;
    } else {
      /* The error is bounded above by 13*|y|^2 + 1/2 * 2^(Exp (s) - prec)
@@ -328,12 +326,14 @@ asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
       if (mpfr_cmp (t, y) == 0) {
         /* If t=y, then since the error is bounded by 3 ulps,
            and prec(t) = prec_im + 7, then we know the imaginary part
-           rounds either to t or to the adjacent number away from zero. */
-        if (MPC_IS_LIKE_RNDA(rnd_im, MPFR_SIGNBIT(t)))
-          if (MPFR_SIGNBIT(t) == 0)
-            mpfr_nextabove (t);
-          else
-            mpfr_nextbelow (t);
+           rounds either to t or to the adjacent number away from zero.
+           As for the real part, we perturb sligthly t in the right
+           direction, in order to get the correct rounding and the correct
+           ternary value. */
+        if (MPFR_SIGNBIT(t) == 0)
+          mpfr_nextabove (t);
+        else
+          mpfr_nextbelow (t);
         // for other rounding modes, y/sqrt(1-x) rounds to y
         ok = 1;
       } else

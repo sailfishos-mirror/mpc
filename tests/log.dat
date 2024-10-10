@@ -188,3 +188,5 @@
 
 # log (close to 1 + i*eps), improves test coverage
 + - 2 -0x1p-36 2 0x1p-1073741822  36 0x0.FFFFFFFFF 2 0x1p-1073741822 N N
+? ? 127 0x1.0db388e7c782b93e6d4b158b2p-1868 127 0x5.ce671a2364b6p-936 127 0x1p+0 127 0x5.ce671a2364b6p-936 N N
+? ? 137 0x6.e36581b2ce90b6a61a37daa22p-356 137 0xe.d8c178531ad2p-180 137 0x1p+0 137 0xe.d8c178531ad2p-180 N N
