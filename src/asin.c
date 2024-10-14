@@ -106,9 +106,6 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   MPC_ASSERT(ex <= -1);
   ey = mpfr_get_exp (mpc_imagref (z));
   MPC_ASSERT(ey <= -1);
-  e = (ex >= ey) ? ex : ey;
-  e = -e;
-  /* now e >= 1 */
 
   p = mpfr_get_prec (mpc_realref (s)); /* working precision */
   MPC_ASSERT(mpfr_get_prec (mpc_imagref (s)) == p);
@@ -152,10 +149,10 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   }
   /* check (2k-1)^2 is exactly representable */
   MPC_ASSERT(2 * k - 1 <= ULONG_MAX / (2 * k - 1));
-  /* maximal absolute error on Re(s),Im(s) is:
-     (5k-3)k/2*2^(-1-p) for e=1
-     5k/2*2^(-e-p) for e >= 2 */
-  if (e == 1)
+  /* maximal absolute error on Re(s) is:
+     (5k-3)k/2*2^(-1-p) for ex=-1
+     5k/2*2^(ex-p) for ex <= -2 */
+  if (ex == 1)
     {
       MPC_ASSERT(5 * k - 3 <= ULONG_MAX / k);
       kx = (5 * k - 3) * k;
@@ -163,32 +160,22 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
   else
     kx = 5 * k;
   kx = (kx + 1) / 2; /* takes into account the 1/2 factor in both cases */
-  /* now (5k-3)k/2 <= kx for e=1, and 5k/2 <= kx for e >= 2, thus
-     the maximal absolute error on Re(s),Im(s) is bounded by kx*2^(-e-p) */
+  /* now (5k-3)k/2 <= kx for ex=-1, and 5k/2 <= kx for ex <= -2, thus
+     the maximal absolute error on Re(s) is bounded by kx*2^(ex-p) */
 
-  e = -e;
-  ky = kx;
-
-  /* for the real part, convert the maximal absolute error kx*2^(e-p) into
+  /* for the real part, convert the maximal absolute error kx*2^(ex-p) into
      relative error */
-  ex = mpfr_get_exp (mpc_realref (s));
-  /* ulp(Re(s)) = 2^(ex+1-p) */
-  err = 0;
-  /* invariant: the error will be kx*2^err */
-  if (ex + 1 > e) /* divide kx by 2^(ex+1-e) */
-    while (ex + 1 > e)
-      {
-        kx = (kx + 1) / 2;
-        ex--;
-      }
-  else /* multiply the error by 2^(e-(ex+1)), thus add e-(ex+1) to err */
-    err += e - (ex + 1);
+  e = mpfr_get_exp (mpc_realref (s));
+  /* ulp(Re(s)) = 2^(e-p) */
+  /* the relative error is kx*2^(ex-e) */
+  err = ex - e;
   /* now the rounding error is bounded by kx*2^err*ulp(Re(s)), add the
      mathematical error which is bounded by ulp(Re(s)): the first neglected
      term is less than 1/2*ulp(Re(s)), and each term decreases by at least
      a factor 2, since |z^2| <= 1/2. */
   kx++;
-  for (; kx > 2; err++, kx = (kx + 1) / 2);
+  for (; kx > 1; err++, kx = (kx + 1) / 2);
+  err = (err < 0) ? 0 : err;
   /* can we round Re(s) with error less than 2^(EXP(Re(s))-err) ? */
   if (!tiny && !mpfr_can_round (mpc_realref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
                                 mpfr_get_prec (mpc_realref (rop)) +
@@ -196,30 +183,35 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
     return 0;
 
   /* same for the imaginary part */
-  ey = mpfr_get_exp (mpc_imagref (s));
-  /* we take for e the exponent of Im(z), which amounts to divide the error by
-     2^delta where delta is the exponent difference between Re(z) and Im(z)
-     (see algorithms.tex) */
-  e = mpfr_get_exp (mpc_imagref (z));
-  /* ulp(Im(s)) = 2^(ey+1-p) */
-  if (ey + 1 > e) /* divide ky by 2^(ey+1-e) */
-    while (ey + 1 > e)
-      {
-        ky = (ky + 1) / 2;
-        ey--;
-      }
-  else /* multiply ky by 2^(e-(ey+1)) */
-    ky <<= e - (ey + 1);
+  if (ey == 1)
+    {
+      MPC_ASSERT(5 * k - 3 <= ULONG_MAX / k);
+      ky = (5 * k - 3) * k;
+    }
+  else
+    ky = 5 * k;
+  ky = (ky + 1) / 2; /* takes into account the 1/2 factor in both cases */
+  /* now (5k-3)k/2 <= ky for ey=-1, and 5k/2 <= ky for ey <= -2, thus
+     the maximal absolute error on Im(s) is bounded by ky*2^(ey-p) */
+
+  /* convert the maximal absolute error ky*2^(ey-p) into relative error */
+  e = mpfr_get_exp (mpc_imagref (s));
+  /* ulp(Im(s)) = 2^(e-p) */
+  /* the relative error is ky*2^(ey-e) */
+  err = ey - e;
   /* now the rounding error is bounded by ky*ulp(Im(s)), add the
      mathematical error which is bounded by ulp(Im(s)): the first neglected
      term is less than 1/2*ulp(Im(s)), and each term decreases by at least
      a factor 2, since |z^2| <= 1/2. */
   ky++;
-  for (err = 0; ky > 2; err++, ky = (ky + 1) / 2);
+  for (err = 0; ky > 1; err++, ky = (ky + 1) / 2);
+  err = (err < 0) ? 0 : err;
   /* can we round Im(s) with error less than 2^(EXP(Im(s))-err) ? */
-  return tiny || mpfr_can_round (mpc_imagref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
-                                 mpfr_get_prec (mpc_imagref (rop)) +
-                                 (MPC_RND_IM(rnd) == MPFR_RNDN));
+  if (!tiny && !mpfr_can_round (mpc_imagref (s), p - err, MPFR_RNDN, MPFR_RNDZ,
+                                mpfr_get_prec (mpc_imagref (rop)) +
+                                (MPC_RND_IM(rnd) == MPFR_RNDN)))
+    return 0;
+  return 1;
 }
 
 /* Try to get correct rounding for large |z| with Im(z) < 0,
