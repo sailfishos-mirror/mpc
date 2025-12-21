@@ -1,4 +1,5 @@
 /* mpc_fr_div -- Divide a floating-point number by a complex number.
+   (Adapted version of mpc_div().)
 
 Copyright (C) 2008, 2009, 2011, 2012 INRIA
 
@@ -22,26 +23,23 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 /* this routine deals with the case where w is zero */
 static int
-mpc_fr_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+mpc_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
 /* Assumes w==0, implementation according to C99 G.5.1.8 */
 {
-   int sign_re = MPFR_SIGNBIT (mpc_realref (w));
-   int sign_im = MPFR_SIGNBIT (mpc_imagref (w));
+   int sign = MPFR_SIGNBIT (mpc_realref (w));
    mpfr_t infty;
 
    mpfr_init2 (infty, MPFR_PREC_MIN);
-   mpfr_set_inf (infty, sign_re);
+   mpfr_set_inf (infty, sign);
    mpfr_mul (mpc_realref (a), infty, z, MPC_RND_RE (rnd));
-   mpfr_set_inf (infty, sign_im);
-   mpfr_neg(infty, infty, MPC_RND_IM (rnd));
-   mpfr_mul (mpc_imagref (a), infty, z, MPC_RND_IM (rnd));
    mpfr_clear (infty);
+   mpfr_set_nan (mpc_imagref (a));
    return MPC_INEX (0, 0); /* exact */
 }
 
 /* this routine deals with the case where z is infinite and w finite */
 static int
-mpc_fr_div_inf_fin (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
+mpc_div_inf_fin (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
 /* Assumes w finite and non-zero and z infinite; implementation
    according to C99 G.5.1.8                                     */
 {
@@ -69,7 +67,7 @@ mpc_fr_div_inf_fin (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
 
 /* this routine deals with the case where z if finite and w infinite */
 static int
-mpc_fr_div_fin_inf (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
+mpc_div_fin_inf (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
 /* Assumes z finite and w infinite; implementation according to
    C99 G.5.1.8                                                  */
 {
@@ -106,31 +104,29 @@ mpc_fr_div_fin_inf (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
 
 
 static int
-mpc_fr_div_real (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+mpc_div_real (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
 /* Assumes z finite and w finite and non-zero, with imaginary part
    of w a signed zero.                                             */
 {
    int inex_re, inex_im;
-   /* save signs of operands in case there are overlaps */
-   int zrs = MPFR_SIGNBIT (z);
+   /* save sign of operand in case there are overlap */
    int wis = MPFR_SIGNBIT (mpc_imagref (w));
 
-   /* warning: rop may overlap with z,w so treat the imaginary part first */
    inex_re = mpfr_div (mpc_realref(rop), z, mpc_realref(w), MPC_RND_RE(rnd));
    inex_im = mpfr_init_set_ui(mpc_imagref(rop), 0, MPC_RND_IM(rnd));
 
-   /* correct signs of zeroes if necessary, which does not affect the
+   /* correct sign of zero if necessary, which does not affect the
       inexact flags                                                    */
    if (mpfr_zero_p (mpc_imagref (rop)))
-      mpfr_setsign (mpc_imagref (rop), mpc_imagref (rop), (zrs == wis),
-         MPFR_RNDN);
+      mpfr_setsign (mpc_imagref (rop), mpc_imagref (rop),
+         MPFR_SIGNBIT (z) == wis, MPFR_RNDN);
 
    return MPC_INEX(inex_re, inex_im);
 }
 
 
 static int
-mpc_fr_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+mpc_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
 /* Assumes z finite and w finite and non-zero, with real part
    of w a signed zero.                                        */
 {
@@ -139,17 +135,16 @@ mpc_fr_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
    mpfr_t wloc;
    mpc_t tmprop;
    mpc_ptr dest = (overlap) ? tmprop : rop;
-   /* save signs of operands in case there are overlaps */
-   int zrs = MPFR_SIGNBIT (z);
+   /* save sign of operand in case there are overlap */
    int wrs = MPFR_SIGNBIT (mpc_realref (w));
 
    if (overlap)
       mpc_init3 (tmprop, MPC_PREC_RE (rop), MPC_PREC_IM (rop));
 
    wloc[0] = mpc_imagref(w)[0]; /* copies mpfr struct IM(w) into wloc */
+   inex_re = mpfr_set_ui(mpc_realref(dest), 0, MPC_RND_RE(rnd));
    mpfr_neg (wloc, wloc, MPFR_RNDN);
    /* changes the sign only in wloc, not in w; no need to correct later */
-   inex_re = mpfr_set_ui(mpc_realref(dest), 0, MPC_RND_RE(rnd));
    inex_im = mpfr_div (mpc_imagref(dest), z, wloc, MPC_RND_IM(rnd));
 
    if (overlap) {
@@ -161,11 +156,11 @@ mpc_fr_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
       mpc_clear (tmprop);
    }
 
-   /* correct signs of zeroes if necessary, which does not affect the
+   /* correct sign of zero if necessary, which does not affect the
       inexact flags                                                    */
    if (mpfr_zero_p (mpc_realref (rop)))
-      mpfr_setsign (mpc_realref (rop), mpc_realref (rop), (zrs != wrs),
-         MPFR_RNDN); /* exact */
+      mpfr_setsign (mpc_realref (rop), mpc_realref (rop),
+         MPFR_SIGNBIT (z) != wrs, MPFR_RNDN); /* exact */
 
    return MPC_INEX(inex_re, inex_im);
 }
@@ -196,20 +191,20 @@ mpc_fr_div (mpc_ptr a, mpfr_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
       a real; we handle it separately instead. See also
       https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1399.htm */
    if (mpc_zero_p (c)) /* both Re(c) and Im(c) are zero */
-      return mpc_fr_div_zero (a, b, c, rnd);
-   else if (mpfr_inf_p (b) && mpc_fin_p (c)) /* either Re(b) or Im(b) is infinite
-                                               and both Re(c) and Im(c) are ordinary */
-         return mpc_fr_div_inf_fin (a, b, c);
+      return mpc_div_zero (a, b, c, rnd);
+   else if (mpfr_inf_p (b) && mpc_fin_p (c)) /* b is infinite and both Re(c)
+                                                and Im(c) are ordinary */
+         return mpc_div_inf_fin (a, b, c);
    else if (mpfr_number_p (b) && mpc_inf_p (c))
-         return mpc_fr_div_fin_inf (a, b, c);
+         return mpc_div_fin_inf (a, b, c);
    else if (!mpfr_number_p (b) || !mpc_fin_p (c)) {
       mpc_set_nan (a);
       return MPC_INEX (0, 0);
    }
    else if (mpfr_zero_p(mpc_imagref(c)))
-      return mpc_fr_div_real (a, b, c, rnd);
+      return mpc_div_real (a, b, c, rnd);
    else if (mpfr_zero_p(mpc_realref(c)))
-      return mpc_fr_div_imag (a, b, c, rnd);
+      return mpc_div_imag (a, b, c, rnd);
 
    prec = MPC_MAX_PREC(a);
 
