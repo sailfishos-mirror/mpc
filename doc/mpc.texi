@@ -470,6 +470,12 @@ either infinite or a NaN or a signed zero, a function returns the same
 value as those specified for the corresponding function in the ISO C99
 standard.
 
+@section Exceptions
+
+This version of GNU MPC does not support exceptions (invalid, division by
+zero, overflow, underflow, inexact).
+A future version might support them, through the GNU MPFR mechanism for
+supporting exceptions.
 
 @node Complex Functions
 @chapter Complex Functions
