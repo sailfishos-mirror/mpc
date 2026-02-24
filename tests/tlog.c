@@ -28,7 +28,7 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #include "data_check.tpl"
 #include "tgeneric.tpl"
 
-void
+static void
 check_divby0_exc(void)
 {
   mpc_t z;
