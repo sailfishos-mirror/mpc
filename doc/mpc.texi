@@ -1102,6 +1102,9 @@ Set @var{rop} to the dot product of the elements in the arrays @var{op1} and
 @deftypefunx int mpc_ui_div (mpc_t @var{rop}, unsigned long int @var{op1}, const mpc_t @var{op2}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_fr_div (mpc_t @var{rop}, const mpfr_t @var{op1}, const mpc_t @var{op2}, mpc_rnd_t @var{rnd})
 Set @var{rop} to @var{op1}/@var{op2} rounded according to @var{rnd}.
+The functions @code{mpc_fr_div} and @code{mpc_ui_div} follow the C standard (draft N3685,
+section 6.5.6, paragraph 9) concerning special values and signed zeroes.
+
 @end deftypefun
 
 @deftypefun int mpc_conj (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
