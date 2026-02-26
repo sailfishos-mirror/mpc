@@ -21,6 +21,24 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "mpc-impl.h"
 
+/* Recent drafts for upcoming C2Y standard introduce (N3460) definitions
+   for "real / complex" and "complex / complex" divisions.
+
+   For instance, in the draft N3685, section 6.5.6, paragraph 9:
+   > - The / operator where both operands are complex with values
+   >   x + iy and u + iv computes (xu + yv)/(u^2 + v^2) + i(yu - xv)/(u^2 + v^2).
+   > - The / operator where the first operand is real with value x
+   >   and the second operand is complex with value u + iv computes
+   >   (xu)/(u^2 + v^2) + i(-xv)/(u^2 + v^2).
+
+   Also, in Annex G, section 3.2, paragraph 2:
+   > if the second operand of the / operator is complex,
+   > the operator raises floating-point exceptions if appropriate
+   > for the calculation of the parts
+
+   On this ground, we set divide-by-zero exception in mpc_div_zero().
+   */
+
 /* this routine deals with the case where w is zero */
 static int
 mpc_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
@@ -34,6 +52,7 @@ mpc_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
    mpfr_mul (mpc_realref (a), infty, z, MPC_RND_RE (rnd));
    mpfr_clear (infty);
    mpfr_set_nan (mpc_imagref (a));
+   mpfr_set_divby0 ();
    return MPC_INEX (0, 0); /* exact */
 }
 
