@@ -69,9 +69,9 @@ mpc_log2 (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
          /* error <= k2 = 1/2 ulp */
          mpfr_div (mpc_imagref (log), mpc_imagref (log), log2, MPFR_RNDN);
          /* by the generic error of division
-            (eq:proprealdiv in algorithms.tex):
-            error <= 2 (k1+k2) / (1 - k2 2^(1-prec)) ulp
-                  <= 4 ulp for prec >= 1 */
+            (eq:proprealdiv in algorithms.tex), +1/2 ulp for final rounding:
+            error <= (2 (k1+k2) / (1 - k2 2^(1-prec))) + 1/2 ulp
+                  <= 4 ulp for prec >= 2 */
          ok = mpfr_can_round (mpc_imagref (log), prec - 2,
                   MPFR_RNDN, MPFR_RNDZ,
                   MPC_PREC_IM(rop) + (MPC_RND_IM (rnd) == MPFR_RNDN));
