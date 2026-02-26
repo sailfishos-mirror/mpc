@@ -184,6 +184,7 @@ mpc_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
    return MPC_INEX(inex_re, inex_im);
 }
 
+#if 0
 int
 mpc_fr_div (mpc_ptr a, mpfr_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
 {
@@ -424,3 +425,82 @@ mpc_fr_div (mpc_ptr a, mpfr_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
 
    return MPC_INEX (inexact_re, inexact_im);
 }
+
+#else
+int
+mpc_fr_div (mpc_ptr a, mpfr_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
+{
+   mpfr_prec_t prec;
+   mpfr_exp_t saved_emin, saved_emax;
+   mpfr_rnd_t rnd_re = MPC_RND_RE (rnd), rnd_im = MPC_RND_IM (rnd);
+   int ok = 0, loop = 0, inex_fr, inex_mul, inex_re, inex_im, inex;
+   mpfr_t x;
+   mpc_t conj, res;
+
+   if (mpc_zero_p (c)) /* both Re(c) and Im(c) are zero */
+      return mpc_div_zero (a, b, c, rnd);
+   else if (mpfr_inf_p (b) && mpc_fin_p (c)) /* b is infinite and both Re(c)
+                                                and Im(c) are ordinary */
+         return mpc_div_inf_fin (a, b, c);
+   else if (mpfr_number_p (b) && mpc_inf_p (c))
+         return mpc_div_fin_inf (a, b, c);
+   else if (!mpfr_number_p (b) || !mpc_fin_p (c)) {
+      mpc_set_nan (a);
+      return MPC_INEX (0, 0);
+   }
+   else if (mpfr_zero_p(mpc_imagref(c)))
+      return mpc_div_real (a, b, c, rnd);
+   else if (mpfr_zero_p(mpc_realref(c)))
+      return mpc_div_imag (a, b, c, rnd);
+
+   saved_emin = mpfr_get_emin ();
+   saved_emax = mpfr_get_emax ();
+   mpfr_set_emin (mpfr_get_emin_min ());
+   mpfr_set_emax (mpfr_get_emax_max ());
+
+   mpfr_init2 (x, 2);
+   mpc_init2 (res, 2);
+   prec = MPC_MAX_PREC (a);
+   /* create the conjugate of c in conj without allocating new memory */
+   mpc_realref (conj)[0] = mpc_realref (c)[0];
+   mpc_imagref (conj)[0] = mpc_imagref (c)[0];
+   MPFR_CHANGE_SIGN (mpc_imagref (conj));
+
+   while (ok == 0) {
+      MPC_LOOP_NEXT(loop, c, a);
+      prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
+      mpfr_set_prec (x, prec);
+      mpc_set_prec (res, prec);
+
+      inex_fr = mpc_norm (x, c, MPFR_RNDU); /* error k2 <= 1 ulp */
+      inex_fr |= mpfr_div (x, b, x, MPFR_RNDZ);
+         /* generic error of division with k1=0 + 1 ulp
+            <= 5 ulp for prec >= 2 */
+
+      inex_mul = mpc_mul_fr (res, conj, x, MPC_RNDZZ);
+         /* for each part, generic error of real multiplication + 1 ulp
+            <= 11 ulp <= 2^4 ulp */
+
+      ok = (!inex_fr && !inex_mul)
+           || (   mpfr_can_round (mpc_realref (res), prec - 4, MPFR_RNDN,
+                       MPFR_RNDZ, MPC_PREC_RE(a) + (rnd_re == MPFR_RNDN))
+               && mpfr_can_round (mpc_imagref (res), prec - 4, MPFR_RNDN,
+                       MPFR_RNDZ, MPC_PREC_IM(a) + (rnd_im == MPFR_RNDN)));
+
+   }
+
+   inex = mpc_set (a, res, rnd);
+   inex_re = MPC_INEX_RE (inex);
+   inex_im = MPC_INEX_IM (inex);
+
+   mpfr_set_emin (saved_emin);
+   mpfr_set_emax (saved_emax);
+   inex_re = mpfr_check_range (mpc_realref (a), inex_re, rnd_re);
+   inex_im = mpfr_check_range (mpc_imagref (a), inex_im, rnd_im);
+
+   mpfr_clear (x);
+   mpc_clear (res);
+   return MPC_INEX(inex_re, inex_im);
+}
+#endif
+
