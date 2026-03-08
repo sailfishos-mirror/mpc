@@ -36,7 +36,8 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
    > the operator raises floating-point exceptions if appropriate
    > for the calculation of the parts
 
-   On this ground, we set divide-by-zero exception in mpc_div_zero().
+   On this ground, we set divide-by-zero exception in mpc_div_zero() if either
+   real or imaginary part of the dividend is a regular number.
    */
 
 /* this routine deals with the case where w is zero */
@@ -52,7 +53,8 @@ mpc_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
    mpfr_mul (mpc_realref (a), infty, z, MPC_RND_RE (rnd));
    mpfr_clear (infty);
    mpfr_set_nan (mpc_imagref (a));
-   mpfr_set_divby0 ();
+   if (mpfr_regular_p (z))
+     mpfr_set_divby0 ();
    return MPC_INEX (0, 0); /* exact */
 }
 
