@@ -68,10 +68,37 @@ check_divby0_exc (void)
   mpfr_clear (n);
 }
 
+/* check that mpc_fr_div does not change the precision of its result,
+   see https://sympa.inria.fr/sympa/arc/mpc-discuss/2026-03/msg00020.html */
+static void
+bug20260331 (void)
+{
+  mpc_t x;
+  mpfr_t y;
+  const mpfr_prec_t prec = 160;
+  mpc_init2 (x, prec);
+  mpfr_init2 (y, prec);
+  mpc_set_ui (x, 5, MPC_RNDNN);
+  mpfr_set_ui (y, 1, MPC_RNDNN);
+  mpc_fr_div (x, y, x, MPC_RNDNN);
+  if (mpfr_get_prec (mpc_realref (x)) != prec) {
+    printf ("Error, precision of real part changed\n");
+    exit (1);
+  }
+  if (mpfr_get_prec (mpc_imagref (x)) != prec) {
+    printf ("Error, precision of imaginary part changed\n");
+    exit (1);
+  }
+  mpc_clear (x);
+  mpfr_clear (y);
+}
+
 int
 main (void)
 {
   test_start();
+
+  bug20260331 ();
 
   check_divby0_exc ();
 
