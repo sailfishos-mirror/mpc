@@ -134,7 +134,7 @@ mpc_div_real (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
    int wis = MPFR_SIGNBIT (mpc_imagref (w));
 
    inex_re = mpfr_div (mpc_realref(rop), z, mpc_realref(w), MPC_RND_RE(rnd));
-   inex_im = mpfr_init_set_ui(mpc_imagref(rop), 0, MPC_RND_IM(rnd));
+   inex_im = mpfr_set_ui(mpc_imagref(rop), 0, MPC_RND_IM(rnd));
 
    /* correct sign of zero if necessary, which does not affect the
       inexact flags                                                    */
