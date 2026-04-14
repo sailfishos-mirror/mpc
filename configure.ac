@@ -137,8 +137,6 @@ AC_CHECK_FUNCS([gettimeofday localeconv setlocale getrusage])
 AC_CHECK_FUNCS([dup dup2],,
         [AC_DEFINE([MPC_NO_STREAM_REDIRECTION],1,[Do not check mpc_out_str on stdout])])
 
-# Warning: up from autoconf 2.70, the following test fails with C++
-# see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=992981
 AC_CHECK_LIB([gmp], [__gmpz_init],
              [LIBS="-lgmp $LIBS"],
              [AC_MSG_ERROR([libgmp not found or uses a different ABI (including static vs shared).])])
