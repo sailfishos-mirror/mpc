@@ -79,7 +79,7 @@ bug20260331 (void)
   mpc_init2 (x, prec);
   mpfr_init2 (y, prec);
   mpc_set_ui (x, 5, MPC_RNDNN);
-  mpfr_set_ui (y, 1, MPC_RNDNN);
+  mpfr_set_ui (y, 1, MPFR_RNDN);
   mpc_fr_div (x, y, x, MPC_RNDNN);
   if (mpfr_get_prec (mpc_realref (x)) != prec) {
     printf ("Error, precision of real part changed\n");
