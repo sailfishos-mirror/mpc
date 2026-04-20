@@ -28,9 +28,10 @@ mpc_sum (mpc_ptr sum, const mpc_ptr *z, unsigned long n, mpc_rnd_t rnd)
   mpfr_ptr *t;
   unsigned long i;
 
+  /* avoid a compiler warning when n=0 */
   if (n == 0)
     {
-      mpc_set_ui_ui (sum, 0, 0, MPC_RNDNN);
+      mpc_set_ui_ui (sum, 0, 0, rnd);
       return MPC_INEX(0, 0);
     }
 
